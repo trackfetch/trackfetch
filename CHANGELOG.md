@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.3.4] - 2026-11-21
+
 ### Added
 - `music_sources` and `--music-sources` choose the priority of the music
   providers, separately from metadata providers. The default
@@ -289,7 +291,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - PyInstaller spec, plus prebuilt binaries for Linux, macOS and Windows on x86_64 and ARM64.
 - Automated releases: pushing a new version to `master` builds and publishes all binaries.
 
-[Unreleased]: https://github.com/trackfetch/trackfetch/compare/v2.3.3...HEAD
+[Unreleased]: https://github.com/trackfetch/trackfetch/compare/v2.3.4...HEAD
+[2.3.4]: https://github.com/trackfetch/trackfetch/compare/v2.3.3...v2.3.4
 [2.3.3]: https://github.com/trackfetch/trackfetch/releases/tag/v2.3.3
 [2.3.2]: https://github.com/trackfetch/trackfetch/releases/tag/v2.3.2
 [2.3.1]: https://github.com/trackfetch/trackfetch/releases/tag/v2.3.1

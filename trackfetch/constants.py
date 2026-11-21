@@ -31,7 +31,7 @@ AUDIO_FORMATS = {
     ],
 }
 
-VERSION = "2.3.3"
+VERSION = "2.3.4"
 USER_AGENT = (
     f"trackfetch/{VERSION} "
     "(https://github.com/trackfetch/trackfetch)"
