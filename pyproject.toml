@@ -36,9 +36,9 @@ classifiers = [
 test = ["pytest>=8", "pytest-cov>=5"]
 
 [project.urls]
-Homepage = "https://github.com/ByteMe6/trackfetch"
-Issues = "https://github.com/ByteMe6/trackfetch/issues"
-Changelog = "https://github.com/ByteMe6/trackfetch/blob/master/CHANGELOG.md"
+Homepage = "https://github.com/trackfetch/trackfetch"
+Issues = "https://github.com/trackfetch/trackfetch/issues"
+Changelog = "https://github.com/trackfetch/trackfetch/blob/master/CHANGELOG.md"
 
 [project.scripts]
 trackfetch = "trackfetch:main"

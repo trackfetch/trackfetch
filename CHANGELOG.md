@@ -289,15 +289,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - PyInstaller spec, plus prebuilt binaries for Linux, macOS and Windows on x86_64 and ARM64.
 - Automated releases: pushing a new version to `master` builds and publishes all binaries.
 
-[Unreleased]: https://github.com/ByteMe6/trackfetch/compare/v2.3.0...HEAD
-[2.3.0]: https://github.com/ByteMe6/trackfetch/releases/tag/v2.3.0
-[2.2.11]: https://github.com/ByteMe6/trackfetch/releases/tag/v2.2.11
-[2.2.10]: https://github.com/ByteMe6/trackfetch/releases/tag/v2.2.10
-[2.2.9]: https://github.com/ByteMe6/trackfetch/releases/tag/v2.2.9
-[2.2.7]: https://github.com/ByteMe6/trackfetch/releases/tag/v2.2.7
-[2.2.6]: https://github.com/ByteMe6/trackfetch/releases/tag/v2.2.6
-[2.2.5]: https://github.com/ByteMe6/trackfetch/releases/tag/v2.2.5
-[2.2.0]: https://github.com/ByteMe6/trackfetch/releases/tag/v2.2.0
-[2.1.0]: https://github.com/ByteMe6/trackfetch/releases/tag/v2.1.0
-[2.0.0]: https://github.com/ByteMe6/trackfetch/releases/tag/v2.0.0
-[1.0.0]: https://github.com/ByteMe6/trackfetch/releases/tag/v1.0.0
+[Unreleased]: https://github.com/trackfetch/trackfetch/compare/v2.3.3...HEAD
+[2.3.3]: https://github.com/trackfetch/trackfetch/releases/tag/v2.3.3
+[2.3.2]: https://github.com/trackfetch/trackfetch/releases/tag/v2.3.2
+[2.3.1]: https://github.com/trackfetch/trackfetch/releases/tag/v2.3.1
+[2.3.0]: https://github.com/trackfetch/trackfetch/releases/tag/v2.3.0
+[2.2.11]: https://github.com/trackfetch/trackfetch/releases/tag/v2.2.11
+[2.2.10]: https://github.com/trackfetch/trackfetch/releases/tag/v2.2.10
+[2.2.9]: https://github.com/trackfetch/trackfetch/releases/tag/v2.2.9
+[2.2.7]: https://github.com/trackfetch/trackfetch/releases/tag/v2.2.7
+[2.2.6]: https://github.com/trackfetch/trackfetch/releases/tag/v2.2.6
+[2.2.5]: https://github.com/trackfetch/trackfetch/releases/tag/v2.2.5
+[2.2.0]: https://github.com/trackfetch/trackfetch/releases/tag/v2.2.0
+[2.1.0]: https://github.com/trackfetch/trackfetch/releases/tag/v2.1.0
+[2.0.0]: https://github.com/trackfetch/trackfetch/releases/tag/v2.0.0
+[1.0.0]: https://github.com/trackfetch/trackfetch/releases/tag/v1.0.0

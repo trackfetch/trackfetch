@@ -4,9 +4,9 @@
 </picture>
 
 <p align="center">
-  <a href="https://github.com/ByteMe6/trackfetch/releases/latest"><img alt="Останній реліз" src="https://img.shields.io/github/v/release/ByteMe6/trackfetch?style=flat-square&label=release&labelColor=15122B&color=FFB547"></a>
+  <a href="https://github.com/trackfetch/trackfetch/releases/latest"><img alt="Останній реліз" src="https://img.shields.io/github/v/release/trackfetch/trackfetch?style=flat-square&label=release&labelColor=15122B&color=FFB547"></a>
   <a href="https://pypi.org/project/trackfetch/"><img alt="PyPI" src="https://img.shields.io/pypi/v/trackfetch?style=flat-square&label=pypi&labelColor=15122B&color=FFB547"></a>
-  <a href="https://github.com/ByteMe6/trackfetch/actions/workflows/release.yml"><img alt="Статус збірки" src="https://img.shields.io/github/actions/workflow/status/ByteMe6/trackfetch/release.yml?branch=master&style=flat-square&label=build&labelColor=15122B"></a>
+  <a href="https://github.com/trackfetch/trackfetch/actions/workflows/release.yml"><img alt="Статус збірки" src="https://img.shields.io/github/actions/workflow/status/trackfetch/trackfetch/release.yml?branch=master&style=flat-square&label=build&labelColor=15122B"></a>
   <a href="#встановлення"><img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-FFB547?style=flat-square&labelColor=15122B"></a>
   <a href="#готовий-бінарний-файл"><img alt="Linux, macOS і Windows на x86_64 та ARM64" src="https://img.shields.io/badge/linux%20%C2%B7%20macos%20%C2%B7%20windows-x86__64%20%2B%20arm64-FFB547?style=flat-square&labelColor=15122B"></a>
   <a href="LICENSE"><img alt="Ліцензія: GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-FFB547?style=flat-square&labelColor=15122B"></a>
@@ -51,7 +51,7 @@ trackfetch читає звичайний текстовий файл, де в к
 macOS і Linux:
 
 ```bash
-brew install ByteMe6/tap/trackfetch
+brew install trackfetch/tap/trackfetch
 ```
 
 На macOS формула ставить готовий бінарник `trackfetch` і статичний готовий `ffmpeg` усередині формули, тож `ffmpeg` — та сама залежність, яку Homebrew раніше збирав годинами на Intel-маках і нових версіях macOS — більше не компілюється. `yt-dlp` і `deno`, як і раніше, ставляться з Homebrew.
@@ -61,8 +61,8 @@ brew install ByteMe6/tap/trackfetch
 Linux і Mac на Apple Silicon, з увімкненими flakes:
 
 ```bash
-nix run github:ByteMe6/trackfetch -- songs.txt   # запустити без встановлення
-nix profile install github:ByteMe6/trackfetch    # встановити
+nix run github:trackfetch/trackfetch -- songs.txt   # запустити без встановлення
+nix profile install github:trackfetch/trackfetch    # встановити
 ```
 
 ### pipx
@@ -73,13 +73,13 @@ pipx install trackfetch
 
 ### Готовий бінарний файл
 
-Python не потрібен. Завантаж файл для своєї системи з [останнього релізу](https://github.com/ByteMe6/trackfetch/releases/latest):
+Python не потрібен. Завантаж файл для своєї системи з [останнього релізу](https://github.com/trackfetch/trackfetch/releases/latest):
 
 | | x86_64 | ARM64 |
 | --- | --- | --- |
-| **Linux** | [`trackfetch-linux-x86_64`](https://github.com/ByteMe6/trackfetch/releases/latest/download/trackfetch-linux-x86_64) | [`trackfetch-linux-arm64`](https://github.com/ByteMe6/trackfetch/releases/latest/download/trackfetch-linux-arm64) |
-| **macOS** | [`trackfetch-macos-x86_64`](https://github.com/ByteMe6/trackfetch/releases/latest/download/trackfetch-macos-x86_64) (Intel) | [`trackfetch-macos-arm64`](https://github.com/ByteMe6/trackfetch/releases/latest/download/trackfetch-macos-arm64) (Apple Silicon) |
-| **Windows** | [`trackfetch-windows-x86_64.exe`](https://github.com/ByteMe6/trackfetch/releases/latest/download/trackfetch-windows-x86_64.exe) | [`trackfetch-windows-arm64.exe`](https://github.com/ByteMe6/trackfetch/releases/latest/download/trackfetch-windows-arm64.exe) |
+| **Linux** | [`trackfetch-linux-x86_64`](https://github.com/trackfetch/trackfetch/releases/latest/download/trackfetch-linux-x86_64) | [`trackfetch-linux-arm64`](https://github.com/trackfetch/trackfetch/releases/latest/download/trackfetch-linux-arm64) |
+| **macOS** | [`trackfetch-macos-x86_64`](https://github.com/trackfetch/trackfetch/releases/latest/download/trackfetch-macos-x86_64) (Intel) | [`trackfetch-macos-arm64`](https://github.com/trackfetch/trackfetch/releases/latest/download/trackfetch-macos-arm64) (Apple Silicon) |
+| **Windows** | [`trackfetch-windows-x86_64.exe`](https://github.com/trackfetch/trackfetch/releases/latest/download/trackfetch-windows-x86_64.exe) | [`trackfetch-windows-arm64.exe`](https://github.com/trackfetch/trackfetch/releases/latest/download/trackfetch-windows-arm64.exe) |
 
 На Linux і macOS зроби файл виконуваним і поклади його в `PATH`:
 
@@ -93,7 +93,7 @@ sudo mv trackfetch-linux-x86_64 /usr/local/bin/trackfetch
 ### З вихідного коду
 
 ```bash
-git clone https://github.com/ByteMe6/trackfetch.git
+git clone https://github.com/trackfetch/trackfetch.git
 cd trackfetch
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
@@ -656,7 +656,7 @@ YouTube часто змінюється. Спершу онови yt-dlp: `pipx u
 <details>
 <summary><b>Завантажилася не та версія пісні</b></summary>
 
-Уточни рядок у файлі, наприклад напиши назву точно так, як її записано у Spotify. Потім видали MP3 і його рядок у `done.txt` та запусти trackfetch знову. Якщо програма й далі обирає не той ролик, [створи issue](https://github.com/ByteMe6/trackfetch/issues/new?template=bug_report.yml) і додай рядки `YouTube score` з виводу.
+Уточни рядок у файлі, наприклад напиши назву точно так, як її записано у Spotify. Потім видали MP3 і його рядок у `done.txt` та запусти trackfetch знову. Якщо програма й далі обирає не той ролик, [створи issue](https://github.com/trackfetch/trackfetch/issues/new?template=bug_report.yml) і додай рядки `YouTube score` з виводу.
 
 </details>
 
@@ -694,8 +694,8 @@ trackfetch призначений для особистого використа
 
 ## Контриб'ютори
 
-<a href="https://github.com/ByteMe6/trackfetch/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=ByteMe6/trackfetch" />
+<a href="https://github.com/trackfetch/trackfetch/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=trackfetch/trackfetch" />
 </a>
 
 ## Ліцензія

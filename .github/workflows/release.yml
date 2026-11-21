@@ -123,13 +123,13 @@ jobs:
           | 🍎 macOS | `trackfetch-macos-x86_64` | `trackfetch-macos-arm64` |
           | 🪟 Windows | `trackfetch-windows-x86_64.exe` | `trackfetch-windows-arm64.exe` |
 
-          Verify with `SHA256SUMS.txt`. Binaries still need `yt-dlp`, `ffmpeg` and `deno` on your `PATH`, plus Spotify API credentials. See the [README](https://github.com/ByteMe6/trackfetch#install).
+          Verify with `SHA256SUMS.txt`. Binaries still need `yt-dlp`, `ffmpeg` and `deno` on your `PATH`, plus Spotify API credentials. See the [README](https://github.com/trackfetch/trackfetch#install).
 
           Or install with a package manager:
           ```bash
-          brew install ByteMe6/tap/trackfetch      # Homebrew, macOS and Linux
+          brew install trackfetch/tap/trackfetch      # Homebrew, macOS and Linux
           pipx install trackfetch                  # PyPI
-          nix profile install github:ByteMe6/trackfetch
+          nix profile install github:trackfetch/trackfetch
           ```
           MD
           cat notes.md

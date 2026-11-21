@@ -34,7 +34,7 @@ AUDIO_FORMATS = {
 VERSION = "2.3.3"
 USER_AGENT = (
     f"trackfetch/{VERSION} "
-    "(https://github.com/ByteMe6/trackfetch)"
+    "(https://github.com/trackfetch/trackfetch)"
 )
 
 METADATA_PROVIDERS = (

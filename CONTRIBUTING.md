@@ -4,7 +4,7 @@ Thanks for helping out. Bug reports, matching improvements, docs fixes and trans
 
 ## Reporting a wrong match
 
-Most bugs are a wrong song being picked. To make these fixable, include in the [bug report](https://github.com/ByteMe6/trackfetch/issues/new?template=bug_report.yml):
+Most bugs are a wrong song being picked. To make these fixable, include in the [bug report](https://github.com/trackfetch/trackfetch/issues/new?template=bug_report.yml):
 
 - the exact `Artist - Title` line from your input file,
 - the `Spotify match score` and `YouTube score` lines from the output,
@@ -13,7 +13,7 @@ Most bugs are a wrong song being picked. To make these fixable, include in the [
 ## Development setup
 
 ```bash
-git clone https://github.com/ByteMe6/trackfetch.git
+git clone https://github.com/trackfetch/trackfetch.git
 cd trackfetch
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[test]" ruff

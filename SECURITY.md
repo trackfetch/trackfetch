@@ -2,13 +2,13 @@
 
 ## Supported versions
 
-Only the [latest release](https://github.com/ByteMe6/trackfetch/releases/latest) receives fixes.
+Only the [latest release](https://github.com/trackfetch/trackfetch/releases/latest) receives fixes.
 
 ## Reporting a vulnerability
 
 Please **don't open a public issue**. Report it privately instead:
 
-1. Go to [Security → Report a vulnerability](https://github.com/ByteMe6/trackfetch/security/advisories/new).
+1. Go to [Security → Report a vulnerability](https://github.com/trackfetch/trackfetch/security/advisories/new).
 2. Describe the problem, the affected version and how to reproduce it.
 
 You'll get a reply within 7 days. Once a fix is released, the advisory is published with credit to you, unless you'd rather stay anonymous.

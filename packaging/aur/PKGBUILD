@@ -5,7 +5,7 @@ pkgver=2.2.10
 pkgrel=1
 pkgdesc="Turn a text file of songs into tagged MP3s using Spotify metadata and YouTube audio"
 arch=('any')
-url="https://github.com/ByteMe6/trackfetch"
+url="https://github.com/trackfetch/trackfetch"
 license=('GPL-3.0-or-later')
 depends=(
   'deno'

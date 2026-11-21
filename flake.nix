@@ -52,8 +52,8 @@
 
           meta = {
             description = "Turn a text file of songs into tagged MP3s using Spotify metadata and YouTube audio";
-            homepage = "https://github.com/ByteMe6/trackfetch";
-            changelog = "https://github.com/ByteMe6/trackfetch/blob/master/CHANGELOG.md";
+            homepage = "https://github.com/trackfetch/trackfetch";
+            changelog = "https://github.com/trackfetch/trackfetch/blob/master/CHANGELOG.md";
             license = lib.licenses.gpl3Plus;
             mainProgram = "trackfetch";
             platforms = lib.platforms.unix;
