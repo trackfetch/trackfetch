@@ -1,6 +1,6 @@
 pkgbase = trackfetch
 	pkgdesc = Turn a text file of songs into tagged MP3s using Spotify metadata and YouTube audio
-	pkgver = 2.2.10
+	pkgver = 2.3.4
 	pkgrel = 1
 	url = https://github.com/trackfetch/trackfetch
 	arch = any
@@ -18,7 +18,7 @@ pkgbase = trackfetch
 	depends = python-requests
 	depends = python-spotipy
 	depends = yt-dlp
-	source = trackfetch-2.2.10.tar.gz::https://github.com/trackfetch/trackfetch/archive/refs/tags/v2.2.10.tar.gz
-	sha256sums = 7acfe002bbe5b544d3966c2409276128e0b898120065be963c7a0bb7bf376959
+	source = trackfetch-2.3.4.tar.gz::https://github.com/trackfetch/trackfetch/archive/refs/tags/v2.3.4.tar.gz
+	sha256sums = 66e24bc401e838d49cf81dc159343231871d35fc73d0c048c60a61889e5e1f15
 
 pkgname = trackfetch

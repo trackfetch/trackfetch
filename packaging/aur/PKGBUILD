@@ -1,7 +1,7 @@
 # Maintainer: ByteMe6 <https://github.com/ByteMe6>
 
 pkgname=trackfetch
-pkgver=2.2.10
+pkgver=2.3.4
 pkgrel=1
 pkgdesc="Turn a text file of songs into tagged MP3s using Spotify metadata and YouTube audio"
 arch=('any')
@@ -25,7 +25,7 @@ makedepends=(
 )
 checkdepends=('python-pytest')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('7acfe002bbe5b544d3966c2409276128e0b898120065be963c7a0bb7bf376959')
+sha256sums=('66e24bc401e838d49cf81dc159343231871d35fc73d0c048c60a61889e5e1f15')
 
 build() {
   cd "$pkgname-$pkgver"
