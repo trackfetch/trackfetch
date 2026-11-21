@@ -307,3 +307,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [2.1.0]: https://github.com/trackfetch/trackfetch/releases/tag/v2.1.0
 [2.0.0]: https://github.com/trackfetch/trackfetch/releases/tag/v2.0.0
 [1.0.0]: https://github.com/trackfetch/trackfetch/releases/tag/v1.0.0
+
