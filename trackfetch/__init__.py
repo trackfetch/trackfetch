@@ -80,6 +80,7 @@ from .constants import (
     YOUTUBE_MUSIC_SEARCH_LIMIT,
     YTDLP_REMOTE_COMPONENTS,
 )
+from .enums import AudioFormat, MusicSource
 from .errors import ProviderAuthError, ProviderError, SoundcloudError, YoutubeSearchError
 from .files import (
     append_line,
@@ -90,12 +91,23 @@ from .files import (
     sanitize_filename,
 )
 from .matching import (
+    ArtistThresholds,
     artist_similarity,
     fallback_metadata,
     normalize,
     score_metadata,
     select_best_metadata,
     similarity,
+)
+from .scoring import (
+    DEFAULT_LYRICS_SCORING,
+    DEFAULT_METADATA_SCORING,
+    DEFAULT_SOUNDCLOUD_SCORING,
+    DEFAULT_YOUTUBE_SCORING,
+    LyricsScoring,
+    MetadataScoring,
+    SoundcloudScoring,
+    YoutubeScoring,
 )
 from .settings import (
     apply_config,
@@ -288,6 +300,17 @@ __all__ = [
     "ProviderError",
     "ProviderHealth",
     "RateLimiter",
+    "AudioFormat",
+    "MusicSource",
+    "LyricsScoring",
+    "MetadataScoring",
+    "SoundcloudScoring",
+    "YoutubeScoring",
+    "DEFAULT_LYRICS_SCORING",
+    "DEFAULT_METADATA_SCORING",
+    "DEFAULT_SOUNDCLOUD_SCORING",
+    "DEFAULT_YOUTUBE_SCORING",
+    "ArtistThresholds",
     "SourceConfig",
     "SoundcloudError",
     "THEMES_FILENAME",

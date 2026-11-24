@@ -3,7 +3,10 @@
 
 import re
 import unicodedata
+from dataclasses import dataclass
 from difflib import SequenceMatcher
+
+from .scoring import DEFAULT_METADATA_SCORING
 
 NOISE_BRACKETS_RE = re.compile(
     r"[\(\[]\s*(?:"
@@ -24,10 +27,21 @@ NOISE_BRACKETS_RE = re.compile(
 )
 FEAT_RE = re.compile(r"\s+(?:feat\.?|featuring)\s+.*$", re.IGNORECASE)
 
-# A metadata candidate whose artist barely resembles the input is usually a
-# cover or a same-title song by another act. Keeping the user's own artist and
-# title beats downloading the wrong track.
-MIN_ARTIST_SIMILARITY = 0.45
+@dataclass(frozen=True)
+class ArtistThresholds:
+    """Minimum artist evidence required from a metadata candidate."""
+
+    # A metadata candidate whose artist barely resembles the input is usually
+    # a cover or a same-title song by another act. Keeping the user's own
+    # artist and title beats downloading the wrong track.
+    min_artist_similarity: float = 0.45
+
+
+DEFAULT_ARTIST_THRESHOLDS = ArtistThresholds()
+
+# Historical name kept as the single source of truth lives in
+# ArtistThresholds.min_artist_similarity.
+MIN_ARTIST_SIMILARITY = DEFAULT_ARTIST_THRESHOLDS.min_artist_similarity
 
 
 def normalize(text: str) -> str:
@@ -72,6 +86,7 @@ def score_metadata(
     candidate: dict,
     match_threshold: float,
     title_threshold: float,
+    scoring=DEFAULT_METADATA_SCORING,
 ):
     """Return a copy of the candidate with a score, or None if it is too weak."""
     candidate_title = candidate.get("title") or ""
@@ -97,7 +112,10 @@ def score_metadata(
         if artist_score < MIN_ARTIST_SIMILARITY:
             return None
 
-    overall = title_score * 0.70 + artist_score * 0.30
+    overall = (
+        title_score * scoring.title_weight
+        + artist_score * scoring.artist_weight
+    )
 
     if overall < match_threshold:
         return None

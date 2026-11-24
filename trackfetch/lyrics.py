@@ -23,6 +23,7 @@ from .constants import (
 from .errors import ProviderError
 from .matching import score_metadata
 from .providers.search import query_variants
+from .scoring import DEFAULT_LYRICS_SCORING
 
 
 def lrc_fraction_to_ms(fraction: str) -> int:
@@ -62,7 +63,7 @@ def parse_synced_lyrics(text: str):
     return entries
 
 
-def select_lyrics(results, artist: str, title: str, duration=None):
+def select_lyrics(results, artist: str, title: str, duration=None, scoring=DEFAULT_LYRICS_SCORING):
     """Choose the best matching lyrics result and normalize its fields.
 
     LRCLIB results are ranked locally because a relaxed query may return
@@ -101,11 +102,11 @@ def select_lyrics(results, artist: str, title: str, duration=None):
                 difference = None
 
             if difference is not None:
-                if difference <= 3:
-                    score += 0.05
+                if difference <= scoring.close_duration_limit:
+                    score += scoring.close_duration_bonus
 
-                elif difference <= 10:
-                    score += 0.02
+                elif difference <= scoring.near_duration_limit:
+                    score += scoring.near_duration_bonus
 
         plain = (item.get("plainLyrics") or "").strip()
         synced = (item.get("syncedLyrics") or "").strip()

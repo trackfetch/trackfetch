@@ -22,8 +22,10 @@ from .constants import (
     YOUTUBE_MUSIC_SEARCH_LIMIT,
     YTDLP_REMOTE_COMPONENTS,
 )
+from .enums import AudioFormat
 from .errors import YoutubeSearchError
 from .matching import MIN_ARTIST_SIMILARITY, normalize, similarity
+from .scoring import DEFAULT_YOUTUBE_SCORING
 
 # Set by find_youtube_video() so callers can tell "nothing was found at all"
 # apart from "results existed, but none was confident enough".
@@ -383,6 +385,7 @@ def score_youtube_result(
     artist: str,
     title: str,
     duration=None,
+    scoring=DEFAULT_YOUTUBE_SCORING,
 ):
     video_title = video.get("title", "")
     channel = video.get("channel") or video.get("uploader") or ""
@@ -397,28 +400,28 @@ def score_youtube_result(
     title_score = max(title_score, title_boost)
 
     score = (
-        title_score * 0.70
-        + artist_score * 0.30
+        title_score * scoring.title_weight
+        + artist_score * scoring.artist_weight
     )
 
     # A channel that matches the artist is extra evidence, and a "- Topic"
     # channel is the cleanest signal that YouTube itself uploaded the track.
-    if channel and channel_score >= 0.6:
+    if channel and channel_score >= scoring.channel_bonus_min_score:
         if normalize(channel).endswith("topic"):
-            score += 0.15
+            score += scoring.topic_channel_bonus
 
         else:
-            score += 0.10
+            score += scoring.channel_bonus
 
     # Noise stripping is for matching. Bonus and penalty markers still need
     # to see the original words, including ones inside brackets.
     detected_video = unicodedata.normalize("NFC", video_title).lower()
 
     if "official audio" in detected_video:
-        score += 0.08
+        score += scoring.official_audio_bonus
 
     if "audio" in detected_video:
-        score += 0.03
+        score += scoring.audio_bonus
 
     bad_words = [
         "cover",
@@ -434,16 +437,16 @@ def score_youtube_result(
     for word in bad_words:
         # Whole words only: "Discovery" must not trigger "cover".
         if re.search(rf"(?<!\w){re.escape(word)}(?!\w)", detected_video):
-            score -= 0.20
+            score -= scoring.bad_word_penalty
 
     difference = _duration_difference(video.get("duration"), duration)
 
     if difference is not None:
-        if difference <= 3:
-            score += 0.05
+        if difference <= scoring.close_duration_limit:
+            score += scoring.close_duration_bonus
 
-        elif difference <= 10:
-            score += 0.02
+        elif difference <= scoring.near_duration_limit:
+            score += scoring.near_duration_bonus
 
     return score
 
@@ -723,12 +726,14 @@ def _run_streaming(command, limit=8000):
 def download_audio(
     video_url: str,
     temp_dir: Path,
-    audio_format: str = "mp3",
+    audio_format: AudioFormat | str = AudioFormat.MP3,
     audio_quality: int = DEFAULT_AUDIO_QUALITY,
 ):
     """Download and convert audio, recording yt-dlp's error on failure."""
     global LAST_DOWNLOAD_ERROR
 
+    audio_format = AudioFormat(audio_format)
+    format_value = audio_format.value
     template = str(temp_dir / "audio.%(ext)s")
 
     command = [
@@ -736,7 +741,7 @@ def download_audio(
         *AUDIO_FORMATS[audio_format],
         "-x",
         "--audio-format",
-        audio_format,
+        format_value,
         "--audio-quality",
         str(audio_quality),
         "--remote-components",
@@ -761,7 +766,7 @@ def download_audio(
     if returncode != 0:
         return None
 
-    files = list(temp_dir.glob(f"audio.{audio_format}"))
+    files = list(temp_dir.glob(f"audio.{format_value}"))
 
     if not files:
         return None

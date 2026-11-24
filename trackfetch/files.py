@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 from .constants import MAX_FILENAME_BYTES
+from .enums import AudioFormat
 
 
 def sanitize_filename(name: str) -> str:
@@ -34,7 +35,8 @@ def parse_song(line: str):
 
     return artist, title
 
-def make_filename(metadata, title_only, audio_format="mp3"):
+def make_filename(metadata, title_only, audio_format=AudioFormat.MP3):
+    audio_format = AudioFormat(audio_format).value
     if title_only:
         name = metadata["title"]
     else:

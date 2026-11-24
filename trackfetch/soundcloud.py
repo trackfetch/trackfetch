@@ -20,25 +20,21 @@ from unidecode import unidecode
 
 from . import colors
 from .constants import (
-    SOUNDCLOUD_ARTIST_WEIGHT,
     SOUNDCLOUD_DEFAULT_AMBIGUOUS,
     SOUNDCLOUD_DEFAULT_ENABLED,
     SOUNDCLOUD_DETAILS_LIMIT,
     SOUNDCLOUD_DETAILS_TIMEOUT,
     SOUNDCLOUD_DURATION_TOLERANCE,
-    SOUNDCLOUD_DURATION_WEIGHT,
-    SOUNDCLOUD_EXTRA_WEIGHT,
     SOUNDCLOUD_MIN_MARGIN,
     SOUNDCLOUD_MIN_SCORE,
-    SOUNDCLOUD_MIN_TITLE_SCORE,
     SOUNDCLOUD_PREVIEW_RATIO,
     SOUNDCLOUD_PREVIEW_SECONDS,
     SOUNDCLOUD_SEARCH_LIMIT,
     SOUNDCLOUD_SEARCH_TIMEOUT,
-    SOUNDCLOUD_TITLE_WEIGHT,
 )
 from .errors import SoundcloudError
 from .matching import normalize, similarity
+from .scoring import DEFAULT_SOUNDCLOUD_SCORING
 
 
 def _transliterate(text) -> str:
@@ -424,13 +420,15 @@ def _contiguous_index(haystack, needle):
     return None
 
 
-def _fuzzy_window(needle, haystack, threshold=0.8):
+def _fuzzy_window(needle, haystack, scoring=DEFAULT_SOUNDCLOUD_SCORING):
     """Find the best same-length window of ``haystack`` similar to ``needle``.
 
     Used for transliteration variance: "gorbachiov" and "gorbachev" are the
     same title, but neither the tokens nor a naive similarity of the whole
     upload title line up. Returns ``(index, score)`` or None.
     """
+    threshold = scoring.fuzzy_window_threshold
+
     if not needle or not haystack or len(needle) > len(haystack):
         return None
 
@@ -446,7 +444,7 @@ def _fuzzy_window(needle, haystack, threshold=0.8):
     return best
 
 
-def _title_variant_score(variant, title, artist):
+def _title_variant_score(variant, title, artist, scoring=DEFAULT_SOUNDCLOUD_SCORING):
     """Compare one title variant, penalizing words the song does not have.
 
     A shared word is not enough: ``Artist - Another Song`` is a different
@@ -504,7 +502,7 @@ def _title_variant_score(variant, title, artist):
         # A Latin-only upload of a Cyrillic title (or the reverse) has no
         # shared tokens, but a high transliterated similarity is still good
         # evidence. The floor keeps an unrelated same-script title out.
-        if ratio >= 0.8:
+        if ratio >= scoring.latin_similarity_floor:
             return ratio
 
     if start is None:
@@ -523,16 +521,16 @@ def _title_variant_score(variant, title, artist):
             if recall + precision
             else 0.0
         )
-        return max(ratio, f1) * 0.75
+        return max(ratio, f1) * scoring.ordered_words_discount
 
     if start > 0:
         # Words before the title: "Another Song" is not "Song".
-        return ratio * 0.35
+        return ratio * scoring.leading_words_penalty
 
     trailing = len(variant_tokens) - (start + len(expected))
 
-    if trailing > 3:
-        return ratio * 0.7
+    if trailing > scoring.trailing_words_limit:
+        return ratio * scoring.trailing_words_penalty
 
     # The title is a contiguous prefix. Upload suffixes ("- Kissvk.com",
     # "[HQ]") are common and, across scripts, drag the raw similarity down
@@ -542,19 +540,19 @@ def _title_variant_score(variant, title, artist):
     return max(ratio, _cross_script_similarity(title, prefix))
 
 
-def _title_score(candidate, title, artist=""):
+def _title_score(candidate, title, artist="", scoring=DEFAULT_SOUNDCLOUD_SCORING):
     variants = _title_variants(candidate)
 
     if not variants:
         return 0.0
 
     return max(
-        _title_variant_score(variant, title, artist)
+        _title_variant_score(variant, title, artist, scoring)
         for variant in variants
     )
 
 
-def _artist_score(candidate, artist):
+def _artist_score(candidate, artist, scoring=DEFAULT_SOUNDCLOUD_SCORING):
     names = _candidate_artist_names(candidate)
 
     if not names:
@@ -572,7 +570,7 @@ def _artist_score(candidate, artist):
             continue
 
         if _contains_artist(artist, name):
-            score = max(score, 0.92)
+            score = max(score, scoring.contains_artist_score)
 
     return min(score, 1.0)
 
@@ -671,7 +669,7 @@ def blocked_reason(candidate):
     return _blocked_reason(candidate or {})
 
 
-def duration_score(candidate, expected_duration):
+def duration_score(candidate, expected_duration, scoring=DEFAULT_SOUNDCLOUD_SCORING):
     """Score duration similarity, or None when either side is unknown."""
     duration = _duration(candidate.get("duration"))
     expected = _duration(expected_duration)
@@ -681,38 +679,41 @@ def duration_score(candidate, expected_duration):
 
     difference = abs(duration - expected)
 
-    if difference <= 3:
-        return 1.0
+    if difference <= scoring.duration_exact_limit:
+        return scoring.duration_exact_score
 
     if difference <= SOUNDCLOUD_DURATION_TOLERANCE:
-        return 0.9
+        return scoring.duration_near_score
 
     ratio = difference / max(duration, expected)
 
-    if ratio <= 0.10:
-        return 0.6
+    if ratio <= scoring.duration_close_ratio_limit:
+        return scoring.duration_close_score
 
-    if ratio <= 0.20:
-        return 0.3
+    if ratio <= scoring.duration_far_ratio_limit:
+        return scoring.duration_far_score
 
     return 0.0
 
 
-def _extra_score(candidate, artist, title):
+def _extra_score(candidate, artist, title, scoring=DEFAULT_SOUNDCLOUD_SCORING):
     """Small bonus for explicit artist evidence and clean metadata."""
     evidence = 0.0
 
     explicit = [candidate.get("artist"), *(candidate.get("artists") or [])]
     explicit = [name for name in explicit if name]
 
-    if explicit and _artist_score({"artists": explicit}, artist) >= 0.6:
+    if explicit and (
+        _artist_score({"artists": explicit}, artist, scoring)
+        >= scoring.explicit_artist_min_score
+    ):
         evidence = 1.0
 
     elif _contains_artist(artist, candidate.get("uploader") or ""):
-        evidence = 0.7
+        evidence = scoring.uploader_evidence_score
 
     elif _contains_artist(artist, candidate.get("raw_title") or ""):
-        evidence = 0.4
+        evidence = scoring.raw_title_evidence_score
 
     # A titled upload with no artist information anywhere is weaker.
     if not any(_candidate_artist_names(candidate)):
@@ -721,7 +722,7 @@ def _extra_score(candidate, artist, title):
     return evidence
 
 
-def score_candidate(candidate, artist, title, duration=None):
+def score_candidate(candidate, artist, title, duration=None, scoring=DEFAULT_SOUNDCLOUD_SCORING):
     """Score one candidate and attach rejection details.
 
     The weights follow the task brief: title 40%, artist 30%, duration 20%,
@@ -730,18 +731,22 @@ def score_candidate(candidate, artist, title, duration=None):
     losing points.
     """
     scored = dict(candidate)
-    title_value = _title_score(candidate, title, artist)
-    artist_value = _artist_score(candidate, artist)
-    duration_value = duration_score(candidate, duration)
-    extra_value = _extra_score(candidate, artist, title)
+    title_value = _title_score(candidate, title, artist, scoring)
+    artist_value = _artist_score(candidate, artist, scoring)
+    duration_value = duration_score(candidate, duration, scoring)
+    extra_value = _extra_score(candidate, artist, title, scoring)
 
-    effective_duration = 0.5 if duration_value is None else duration_value
+    effective_duration = (
+        scoring.neutral_duration_score
+        if duration_value is None
+        else duration_value
+    )
 
     total = (
-        title_value * SOUNDCLOUD_TITLE_WEIGHT
-        + artist_value * SOUNDCLOUD_ARTIST_WEIGHT
-        + effective_duration * SOUNDCLOUD_DURATION_WEIGHT
-        + extra_value * SOUNDCLOUD_EXTRA_WEIGHT
+        title_value * scoring.title_weight
+        + artist_value * scoring.artist_weight
+        + effective_duration * scoring.duration_weight
+        + extra_value * scoring.extra_weight
     )
 
     reason = None
@@ -749,7 +754,7 @@ def score_candidate(candidate, artist, title, duration=None):
     if not (candidate.get("title") or "").strip():
         reason = "no title metadata"
 
-    elif title_value < SOUNDCLOUD_MIN_TITLE_SCORE:
+    elif title_value < scoring.min_title_score:
         reason = "title does not match"
 
     elif is_version_mismatch(candidate, title):
@@ -780,10 +785,10 @@ def score_candidate(candidate, artist, title, duration=None):
     return scored
 
 
-def rank_candidates(candidates, artist, title, duration=None):
+def rank_candidates(candidates, artist, title, duration=None, scoring=DEFAULT_SOUNDCLOUD_SCORING):
     """Score and rank parsed candidates, best first."""
     scored = [
-        score_candidate(candidate, artist, title, duration)
+        score_candidate(candidate, artist, title, duration, scoring)
         for candidate in candidates or []
         if isinstance(candidate, dict)
     ]
