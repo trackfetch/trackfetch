@@ -4,6 +4,7 @@
 import base64
 from pathlib import Path
 
+import mutagen
 from mutagen.flac import Picture
 from mutagen.id3 import APIC, ID3, TALB, TDRC, TIT2, TPE1, TPE2, TRCK
 from mutagen.mp4 import MP4, MP4Cover
@@ -56,7 +57,7 @@ def add_mp3_metadata(
 ):
     try:
         audio = ID3(mp3_path)
-    except Exception:
+    except (mutagen.MutagenError, OSError):
         audio = ID3()
 
     for tag in [

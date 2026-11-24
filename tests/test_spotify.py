@@ -1,5 +1,6 @@
 import spotipy
 from conftest import FakeSpotify, make_track
+from spotipy.exceptions import SpotifyException
 
 import trackfetch as m
 
@@ -46,12 +47,15 @@ class TestFindSpotifyTrack:
         assert m.find_spotify_track(FakeSpotify([], []), "x", "y") is None
 
     def test_none_when_strict_search_errors(self, capsys):
-        sp = FakeSpotify(RuntimeError("boom"))
+        sp = FakeSpotify(SpotifyException(500, -1, "boom"))
         assert m.find_spotify_track(sp, "x", "y") is None
         assert "Spotify search error" in capsys.readouterr().out
 
     def test_none_when_fallback_errors(self):
-        assert m.find_spotify_track(FakeSpotify([], RuntimeError("boom")), "x", "y") is None
+        assert (
+            m.find_spotify_track(FakeSpotify([], SpotifyException(500, -1, "boom")), "x", "y")
+            is None
+        )
 
 
 class TestGetTrackMetadata:

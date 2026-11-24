@@ -8,6 +8,7 @@ import requests
 
 from . import colors
 from .constants import MAX_COVER_BYTES, MAX_COVER_SIZE, USER_AGENT
+from .errors import CoverError
 from .youtube import youtube_thumbnail_urls
 
 IMAGE_FORMATS = {
@@ -95,8 +96,14 @@ def prepare_cover(path, max_size=MAX_COVER_SIZE, max_bytes=MAX_COVER_BYTES):
                 if output.tell() <= max_bytes or quality <= 60:
                     break
                 quality -= 5
-    except Exception:
-        # A valid signature is not a guarantee that the image is decodable.
+    except (
+        OSError,
+        ValueError,
+        Image.DecompressionBombError,
+    ):
+        # A valid signature is not a guarantee that the image is decodable;
+        # PIL raises UnidentifiedImageError (a ValueError subclass) and
+        # DecompressionBombError for hostile or truncated files.
         return path
 
     target = path.with_suffix(".jpg")
@@ -182,7 +189,12 @@ def download_best_cover(metadata, video, cover_path, youtube_enabled):
                 )
                 return final_path
 
-        except Exception as error:
+        except (
+            requests.RequestException,
+            OSError,
+            ValueError,
+            CoverError,
+        ) as error:
             last_error = error
 
     if last_error is not None:

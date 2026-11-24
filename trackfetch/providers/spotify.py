@@ -4,6 +4,7 @@
 import os
 
 import spotipy
+from spotipy.exceptions import SpotifyException
 from spotipy.oauth2 import SpotifyClientCredentials
 
 from .. import colors
@@ -59,7 +60,7 @@ def find_spotify_track(
             type="track",
             limit=10,
         )
-    except Exception as error:
+    except (SpotifyException, OSError, ValueError) as error:
         if raise_errors:
             raise
 
@@ -76,7 +77,7 @@ def find_spotify_track(
                 limit=10,
             )
             tracks = results.get("tracks", {}).get("items", [])
-        except Exception:
+        except (SpotifyException, OSError, ValueError):
             if raise_errors:
                 raise
 
@@ -163,7 +164,7 @@ def spotify_provider(runtime, artist: str, title: str, config: SourceConfig):
         try:
             runtime.spotify_client = get_spotify(runtime.spotify_args)
 
-        except Exception as error:
+        except (SpotifyException, OSError, ValueError) as error:
             runtime.spotify_initialized = True
 
             if is_spotify_auth_error(error):
@@ -185,7 +186,7 @@ def spotify_provider(runtime, artist: str, title: str, config: SourceConfig):
             raise_errors=True,
         )
 
-    except Exception as error:
+    except (SpotifyException, OSError, ValueError) as error:
         if is_spotify_auth_error(error):
             raise ProviderAuthError(str(error)) from error
 

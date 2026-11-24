@@ -5,6 +5,9 @@ import shutil
 import tempfile
 from pathlib import Path
 
+import mutagen
+import requests
+
 from . import colors, soundcloud, youtube
 from .config import build_source_config
 from .constants import (
@@ -14,7 +17,7 @@ from .constants import (
     SOUNDCLOUD_DEFAULT_AMBIGUOUS,
     SOUNDCLOUD_DEFAULT_TRIGGER,
 )
-from .errors import YoutubeSearchError
+from .errors import CoverError, ProviderError, YoutubeSearchError
 from .files import make_filename
 from .images import download_best_cover
 from .lyrics import fetch_lyrics, write_lrc_sidecar
@@ -102,7 +105,12 @@ def _download_and_tag(
                     duration=metadata.get("duration"),
                 )
 
-            except Exception as error:
+            except (
+                requests.RequestException,
+                ProviderError,
+                ValueError,
+                OSError,
+            ) as error:
                 lyrics_error = True
                 print(
                     f"{colors.label('Lyrics:')} "
@@ -141,7 +149,7 @@ def _download_and_tag(
                 lyrics_type,
             )
 
-        except Exception as error:
+        except (mutagen.MutagenError, CoverError, KeyError, ValueError, OSError) as error:
             return False, f"metadata error: {error}", False
 
         try:
@@ -160,7 +168,7 @@ def _download_and_tag(
                     )
                 )
 
-        except Exception as error:
+        except OSError as error:
             return False, f"move error: {error}", False
 
     print(f"{colors.success('SUCCESS:')} {filename}")

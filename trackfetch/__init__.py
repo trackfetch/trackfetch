@@ -81,7 +81,16 @@ from .constants import (
     YTDLP_REMOTE_COMPONENTS,
 )
 from .enums import AudioFormat, MusicSource
-from .errors import ProviderAuthError, ProviderError, SoundcloudError, YoutubeSearchError
+from .errors import (
+    ConfigError,
+    CoverError,
+    ProviderAuthError,
+    ProviderError,
+    SoundcloudError,
+    TaggingError,
+    TrackFetchError,
+    YoutubeSearchError,
+)
 from .files import (
     append_line,
     make_filename,
@@ -300,6 +309,10 @@ __all__ = [
     "ProviderError",
     "ProviderHealth",
     "RateLimiter",
+    "ConfigError",
+    "CoverError",
+    "TaggingError",
+    "TrackFetchError",
     "AudioFormat",
     "MusicSource",
     "LyricsScoring",

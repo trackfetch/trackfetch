@@ -1272,12 +1272,11 @@ class TestProviders:
         assert capsys.readouterr().out == ""
 
     def test_spotify_401_sets_600_second_cooldown(self, monkeypatch):
-        class Unauthorized(Exception):
-            http_status = 401
+        from spotipy.exceptions import SpotifyException
 
         class BadSpotify:
             def search(self, **kwargs):
-                raise Unauthorized("unauthorized")
+                raise SpotifyException(401, -1, "unauthorized")
 
         runtime = make_runtime()
         runtime.spotify_client = BadSpotify()
@@ -2356,6 +2355,19 @@ class TestYoutubeFallback:
         )
         config = make_config([], none_selected=True)
 
+        # The default FakeSession() has no queued responses: lyrics are
+        # disabled for this test because make_config cannot turn them off
+        # through make_args; instead the empty session's IndexError is the
+        # historical behaviour that the old broad except used to swallow.
+        # Disable lyrics by giving the runtime a session that returns no
+        # usable lyrics without raising.
+        class EmptyLyricsSession:
+            def get(self, url, **kwargs):
+                response = FakeResponse([])
+                return response
+
+        runtime = make_runtime(EmptyLyricsSession())
+
         ok, reason = m.process_song(
             None,
             "A",
@@ -2364,7 +2376,7 @@ class TestYoutubeFallback:
             False,
             "m4a",
             source_config=config,
-            runtime=make_runtime(),
+            runtime=runtime,
         )
 
         assert (ok, reason) == (True, "downloaded")
@@ -2644,8 +2656,10 @@ class TestSpotifyBranches:
         assert not m.is_spotify_auth_error(Exception("boom"))
 
     def test_init_auth_error(self, monkeypatch):
+        from spotipy.exceptions import SpotifyException
+
         def boom(args):
-            raise RuntimeError("401 unauthorized")
+            raise SpotifyException(401, -1, "401 unauthorized")
 
         monkeypatch.setattr(m.providers.spotify, "get_spotify", boom)
 
@@ -2655,8 +2669,10 @@ class TestSpotifyBranches:
             )
 
     def test_init_error(self, monkeypatch):
+        from spotipy.exceptions import SpotifyException
+
         def boom(args):
-            raise RuntimeError("boom")
+            raise SpotifyException(500, -1, "boom")
 
         monkeypatch.setattr(m.providers.spotify, "get_spotify", boom)
 
@@ -2666,8 +2682,10 @@ class TestSpotifyBranches:
             )
 
     def test_search_auth_error(self, monkeypatch):
+        from spotipy.exceptions import SpotifyException
+
         def boom(*args, **kwargs):
-            raise RuntimeError("403")
+            raise SpotifyException(403, -1, "403")
 
         monkeypatch.setattr(m.providers.spotify, "find_spotify_track", boom)
         runtime = make_runtime()
@@ -2678,8 +2696,10 @@ class TestSpotifyBranches:
             m.spotify_provider(runtime, "a", "b", make_config(["spotify"]))
 
     def test_search_error(self, monkeypatch):
+        from spotipy.exceptions import SpotifyException
+
         def boom(*args, **kwargs):
-            raise RuntimeError("boom")
+            raise SpotifyException(500, -1, "boom")
 
         monkeypatch.setattr(m.providers.spotify, "find_spotify_track", boom)
         runtime = make_runtime()

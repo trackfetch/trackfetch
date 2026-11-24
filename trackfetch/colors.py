@@ -273,7 +273,10 @@ def _enable_windows_ansi() -> None:
         if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
             kernel32.SetConsoleMode(handle, mode.value | 0x0004)
 
-    except Exception:
+    except (ImportError, AttributeError, OSError):
+        # Enabling ANSI on a legacy console is best-effort: a missing
+        # kernel32, a closed handle or an unsupported Windows version must
+        # never break startup.
         pass
 
 
