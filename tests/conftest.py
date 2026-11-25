@@ -82,3 +82,39 @@ def metadata():
         "release_date": "2001-03-12",
         "cover_url": "https://img/cover.jpg",
     }
+
+def process_song(
+    artist,
+    title,
+    output,
+    title_only,
+    audio_format="mp3",
+    audio_quality=None,
+    source_config=None,
+    runtime=None,
+    lyrics_type=None,
+):
+    """Test-side adapter for the new ``process_song(ctx, artist, title)`` API."""
+    import trackfetch
+
+    if source_config is None:
+        source_config = trackfetch.build_source_config(None, {})
+
+    if audio_quality is None:
+        audio_quality = trackfetch.config_pkg.constants.DEFAULT_AUDIO_QUALITY
+
+    if lyrics_type is None:
+        lyrics_type = source_config.lyrics_type
+
+    ctx = trackfetch.RunContext(
+        output=output,
+        title_only=title_only,
+        audio_format=audio_format,
+        audio_quality=audio_quality,
+        source_config=source_config,
+        runtime=runtime,
+        lyrics_type=lyrics_type,
+        input_artist=artist,
+        input_title=title,
+    )
+    return trackfetch.process_song(ctx, artist, title)

@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 import requests
+from conftest import process_song
 
 import trackfetch as m
 
@@ -2290,7 +2291,7 @@ class TestYoutubeFallback:
         )
         config = make_config([], youtube=False, soundcloud=False, none_selected=True)
 
-        ok, reason = m.process_song(
+        ok, reason = process_song(
                         "Daft Punk",
             "One More Time",
             tmp_path,
@@ -2332,7 +2333,7 @@ class TestYoutubeFallback:
     def test_none_metadata_still_uses_youtube(self, monkeypatch, tmp_path):
         import shutil
 
-        from conftest import FIXTURES
+        from conftest import FIXTURES, process_song
 
         video = {"title": "A - B", "id": "abc"}
         monkeypatch.setattr(m.pipeline, "find_youtube_video", lambda a, t, d=None: video)
@@ -2364,7 +2365,7 @@ class TestYoutubeFallback:
 
         runtime = make_runtime(EmptyLyricsSession())
 
-        ok, reason = m.process_song(
+        ok, reason = process_song(
                         "A",
             "B",
             tmp_path,
@@ -2776,7 +2777,7 @@ class TestProcessSongDefaults:
         )
         monkeypatch.setattr(m.pipeline, "find_youtube_video", lambda a, t, d=None: None)
 
-        ok, reason = m.process_song(
+        ok, reason = process_song(
                         "A",
             "B",
             tmp_path,

@@ -3,6 +3,7 @@
 
 import shutil
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 
 import mutagen
@@ -11,8 +12,6 @@ import requests
 from .. import soundcloud, youtube
 from ..config import build_source_config
 from ..config_pkg.constants import (
-    DEFAULT_AUDIO_QUALITY,
-    DEFAULT_FORMAT,
     LYRICS_DEFAULT_ENABLED,
 )
 from ..context import RunContext
@@ -178,8 +177,13 @@ def _download_and_tag(selection: SourceSelection, ctx: RunContext, download):
     return Result(True, "downloaded")
 
 
-def _source_registry(ctx, fallback_names):
+def _source_registry(ctx):
     """Build the source registry, injecting the patchable pipeline globals."""
+    fallback_names = (
+        (ctx.input_artist, ctx.input_title)
+        if ctx.input_artist and ctx.input_title
+        else None
+    )
     return build_registry(
         ctx,
         youtube_module=youtube,
@@ -191,7 +195,7 @@ def _source_registry(ctx, fallback_names):
     )
 
 
-def _try_music_sources(metadata, ctx: RunContext, fallback_names):
+def _try_music_sources(metadata, ctx: RunContext):
     """Walk the configured music sources until one produces a file."""
     music_sources = [MusicSource(name) for name in ctx.source_config.music_sources]
 
@@ -199,7 +203,7 @@ def _try_music_sources(metadata, ctx: RunContext, fallback_names):
         _report.fail("No music sources enabled")
         return False, "no music sources enabled"
 
-    registry = _source_registry(ctx, fallback_names)
+    registry = _source_registry(ctx)
     previous = None
     last_failure = None
 
@@ -239,38 +243,19 @@ def _try_music_sources(metadata, ctx: RunContext, fallback_names):
     return last_failure.ok, last_failure.reason
 
 
-def process_song(
-    input_artist,
-    input_title,
-    output,
-    title_only,
-    audio_format=DEFAULT_FORMAT,
-    audio_quality=DEFAULT_AUDIO_QUALITY,
-    source_config=None,
-    runtime=None,
-    lyrics_type=None,
-):
+def process_song(ctx: RunContext, artist: str, title: str):
+    """Download one track described by ``artist`` and ``title``."""
+    source_config = ctx.source_config
+
     if source_config is None:
         source_config = build_source_config(None, {})
+        ctx = replace(ctx, source_config=source_config)
 
     metadata = resolve_metadata(
-        input_artist,
-        input_title,
+        artist,
+        title,
         source_config,
-        runtime,
-    )
-
-    if lyrics_type is None:
-        lyrics_type = source_config.lyrics_type
-
-    ctx = RunContext(
-        output=output,
-        title_only=title_only,
-        audio_format=audio_format,
-        audio_quality=audio_quality,
-        source_config=source_config,
-        runtime=runtime,
-        lyrics_type=lyrics_type,
+        ctx.runtime,
     )
 
     _report.label(
@@ -289,11 +274,7 @@ def process_song(
         _report.skip(f"already exists: {filename}")
         return True, "exists"
 
-    return _try_music_sources(
-        metadata,
-        ctx,
-        (input_artist, input_title),
-    )
+    return _try_music_sources(metadata, ctx)
 
 
 __all__ = ["_soundcloud_artwork", "process_song"]

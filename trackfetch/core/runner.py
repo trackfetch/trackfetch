@@ -5,6 +5,7 @@ import time
 
 from ..core.files import append_line
 from ..ui import colors
+from .context import RunContext
 
 
 def format_summary(label_text, value, role):
@@ -43,16 +44,18 @@ def run_songs(songs, done, done_file, failed_file, args, source_config,
             skipped += 1
             continue
 
-        ok, reason = process_song(
-            artist,
-            title,
-            args.output,
-            args.title_only,
-            args.format,
-            args.audio_quality,
+        ctx = RunContext(
+            output=args.output,
+            title_only=args.title_only,
+            audio_format=args.format,
+            audio_quality=args.audio_quality,
             source_config=source_config,
             runtime=runtime,
+            lyrics_type=source_config.lyrics_type,
+            input_artist=artist,
+            input_title=title,
         )
+        ok, reason = process_song(ctx, artist, title)
 
         if ok:
             if not args.no_logs:

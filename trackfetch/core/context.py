@@ -24,3 +24,5 @@ class RunContext:
     source_config: object = None
     runtime: object = None
     lyrics_type: str = "inline"
+    input_artist: str = ""
+    input_title: str = ""
