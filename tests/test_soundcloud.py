@@ -11,6 +11,16 @@ from trackfetch.errors import SoundcloudError
 real_details = soundcloud.soundcloud_track_details
 
 
+def fallback(artist, title, duration=None, **options):
+    """Call the fallback with grouped options, as production code does."""
+    return soundcloud.find_soundcloud_fallback(
+        artist,
+        title,
+        duration,
+        soundcloud.FallbackOptions(**options),
+    )
+
+
 def completed(stdout="", returncode=0, stderr=None):
     return subprocess.CompletedProcess(
         args=[],
@@ -509,7 +519,7 @@ class TestSelection:
             ],
         )
 
-        result = soundcloud.find_soundcloud_fallback(
+        result = fallback(
             "Artist",
             "Song",
             200,
@@ -536,7 +546,7 @@ class TestSelection:
                 asked.append([item["id"] for item in items])
                 return None
 
-            result = soundcloud.find_soundcloud_fallback(
+            result = fallback(
                 "Artist",
                 "Song",
                 200,
@@ -562,7 +572,7 @@ class TestSelection:
         )
 
         try:
-            result = soundcloud.find_soundcloud_fallback(
+            result = fallback(
                 "Artist",
                 "Song",
                 200,
@@ -584,7 +594,7 @@ class TestSelection:
         )
 
         try:
-            result = soundcloud.find_soundcloud_fallback(
+            result = fallback(
                 "Artist",
                 "A Completely Different Song",
                 200,
@@ -609,7 +619,7 @@ class TestSelection:
         )
 
         try:
-            result = soundcloud.find_soundcloud_fallback("Artist", "Song", 200)
+            result = fallback("Artist", "Song", 200)
 
         finally:
             monkeypatch.undo()
@@ -629,7 +639,7 @@ class TestSelection:
         )
 
         try:
-            result = soundcloud.find_soundcloud_fallback(
+            result = fallback(
                 "Artist", "Song", 200, chooser=lambda items: None
             )
 
@@ -647,7 +657,7 @@ class TestSelection:
         monkeypatch.setattr(soundcloud, "soundcloud_search", boom)
 
         try:
-            result = soundcloud.find_soundcloud_fallback("Artist", "Song", 200)
+            result = fallback("Artist", "Song", 200)
 
         finally:
             monkeypatch.undo()
@@ -665,7 +675,7 @@ class TestSelection:
         )
 
         try:
-            result = soundcloud.find_soundcloud_fallback(
+            result = fallback(
                 "Artist", "Song", 200, enabled=False
             )
 
@@ -684,8 +694,8 @@ class TestSelection:
         )
 
         try:
-            first = soundcloud.find_soundcloud_fallback("Artist", "Song", 200)
-            second = soundcloud.find_soundcloud_fallback("Artist", "Song", 200)
+            first = fallback("Artist", "Song", 200)
+            second = fallback("Artist", "Song", 200)
 
         finally:
             monkeypatch.undo()
@@ -701,10 +711,10 @@ class TestSelection:
             lambda query, limit=5: [entry("1", "Artist - Song", duration=200)],
         )
 
-        strict = soundcloud.find_soundcloud_fallback(
+        strict = fallback(
             "Artist", "Song", 200, min_score=1.01
         )
-        relaxed = soundcloud.find_soundcloud_fallback(
+        relaxed = fallback(
             "Artist", "Song", 200, min_score=0.1, attempt_key="relaxed"
         )
 
@@ -1001,7 +1011,7 @@ class TestEdgeCases:
         def interrupt(items):
             raise KeyboardInterrupt
 
-        result = soundcloud.find_soundcloud_fallback(
+        result = fallback(
             "Artist", "Song", 200, chooser=interrupt
         )
 
@@ -1085,7 +1095,7 @@ class TestMetadataEnrichment:
             ],
         )
 
-        result = soundcloud.find_soundcloud_fallback(
+        result = fallback(
             "Artist",
             "Song",
             200,
@@ -1104,7 +1114,7 @@ class TestMetadataEnrichment:
             lambda query, limit=5: [entry("1", "Artist - Song", duration=200)],
         )
 
-        result = soundcloud.find_soundcloud_fallback(
+        result = fallback(
             "Artist",
             "Song",
             200,
@@ -1309,7 +1319,7 @@ class TestNonInteractiveAmbiguity:
 
         # No chooser: this is what a nohup/cron run looks like. Under a
         # pipe sys.stdin.isatty() is False, so nothing is downloaded.
-        result = soundcloud.find_soundcloud_fallback(
+        result = fallback(
             "Artist",
             "Song",
             200,
@@ -1323,7 +1333,7 @@ class TestNonInteractiveAmbiguity:
     def test_best_mode_takes_the_top_result(self, monkeypatch):
         self.ambiguous_search(monkeypatch)
 
-        result = soundcloud.find_soundcloud_fallback(
+        result = fallback(
             "Artist",
             "Song",
             200,
@@ -1346,7 +1356,7 @@ class TestNonInteractiveAmbiguity:
             ],
         )
 
-        result = soundcloud.find_soundcloud_fallback(
+        result = fallback(
             "Artist",
             "Song",
             200,
@@ -1368,7 +1378,7 @@ class TestNonInteractiveAmbiguity:
             ],
         )
 
-        result = soundcloud.find_soundcloud_fallback(
+        result = fallback(
             "Artist",
             "Song",
             200,
@@ -1407,7 +1417,7 @@ class TestOriginalNameRetry:
 
         monkeypatch.setattr(soundcloud, "soundcloud_search", fake_search)
 
-        result = soundcloud.find_soundcloud_fallback(
+        result = fallback(
             "MintiLove",
             "Альтушка",
             None,
@@ -1432,7 +1442,7 @@ class TestOriginalNameRetry:
 
         monkeypatch.setattr(soundcloud, "soundcloud_search", fake_search)
 
-        result = soundcloud.find_soundcloud_fallback(
+        result = fallback(
             "Neverlove",
             "Альтушка",
             None,
@@ -1453,7 +1463,7 @@ class TestOriginalNameRetry:
 
         monkeypatch.setattr(soundcloud, "soundcloud_search", fake_search)
 
-        soundcloud.find_soundcloud_fallback(
+        fallback(
             "Neverlove",
             "Альтушка",
             None,
@@ -1518,7 +1528,7 @@ class TestRetryIgnoresMismatchedDuration:
 
         monkeypatch.setattr(soundcloud, "soundcloud_search", fake_search)
 
-        result = soundcloud.find_soundcloud_fallback(
+        result = fallback(
             "MintiLove",
             "Альтушка",
             161,
@@ -1544,7 +1554,7 @@ class TestBestModeLowConfidence:
             ],
         )
 
-        result = soundcloud.find_soundcloud_fallback(
+        result = fallback(
             "Artist",
             "Song",
             200,
@@ -1565,7 +1575,7 @@ class TestBestModeLowConfidence:
             ],
         )
 
-        result = soundcloud.find_soundcloud_fallback(
+        result = fallback(
             "Artist",
             "Song",
             200,

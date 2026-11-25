@@ -200,10 +200,7 @@ class SoundcloudSource:
 
     def _search(self, artist, title, duration):
         source_config = self._config
-        return self._module.find_soundcloud_fallback(
-            artist,
-            title,
-            duration,
+        options = self._module.FallbackOptions(
             enabled=source_config.soundcloud_enabled,
             min_score=source_config.soundcloud_min_score,
             min_margin=source_config.soundcloud_min_margin,
@@ -213,6 +210,12 @@ class SoundcloudSource:
                 SOUNDCLOUD_DEFAULT_AMBIGUOUS,
             ),
             fallback_names=self._fallback_names,
+        )
+        return self._module.find_soundcloud_fallback(
+            artist,
+            title,
+            duration,
+            options=options,
         )
 
     def _reject(self, reason, raw_message=None):

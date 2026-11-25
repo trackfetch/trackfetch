@@ -15,7 +15,10 @@ import importlib
 
 from .cli import collect_sources, main
 from .config_pkg.config import (
+    LyricsOptions,
+    SoundcloudPolicy,
     SourceConfig,
+    Thresholds,
     build_source_config,
     config_str_value,
     effective_metadata_sources,
@@ -222,6 +225,9 @@ __all__ = [
     "AudioSource",
     "Tagger",
     "SourceConfig",
+    "Thresholds",
+    "SoundcloudPolicy",
+    "LyricsOptions",
     "SoundcloudError",
     "THEMES_FILENAME",
     "USER_AGENT",

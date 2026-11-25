@@ -11,7 +11,10 @@ from .loader import (
     config_str_value,
 )
 from .model import (
+    LyricsOptions,
+    SoundcloudPolicy,
     SourceConfig,
+    Thresholds,
     effective_metadata_sources,
     format_source_list,
     has_vocadb_hint,
@@ -28,7 +31,10 @@ from .validate import (
 )
 
 __all__ = [
+    "LyricsOptions",
+    "SoundcloudPolicy",
     "SourceConfig",
+    "Thresholds",
     "build_source_config",
     "config_str_value",
     "effective_metadata_sources",

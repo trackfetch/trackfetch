@@ -11,7 +11,7 @@ network calls. The public names are re-exported here so the historical
 ``trackfetch.soundcloud`` module keeps working.
 """
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 from ...config_pkg.constants import (
     SOUNDCLOUD_DEFAULT_AMBIGUOUS,
@@ -77,17 +77,6 @@ class FallbackOptions:
     details_limit: int = SOUNDCLOUD_DETAILS_LIMIT
     details_func: object = None
     fallback_names: object = None
-
-    def with_overrides(self, overrides):
-        unknown = set(overrides) - set(self.__dataclass_fields__)
-
-        if unknown:
-            raise TypeError(
-                "Unexpected SoundCloud fallback option(s): "
-                + ", ".join(sorted(unknown))
-            )
-
-        return replace(self, **overrides)
 
 
 def reset_attempts():
@@ -276,20 +265,18 @@ def find_soundcloud_fallback(
     title,
     duration=None,
     options=None,
-    **overrides,
 ):
     """Search SoundCloud and return the best candidate or user options.
 
-    ``options`` groups the 13 historical keyword parameters in
-    :class:`FallbackOptions`. Keyword overrides are accepted for backwards
-    compatibility, so existing callers keep working unchanged.
+    ``options`` groups the fallback parameters in :class:`FallbackOptions`;
+    every field has the same default as before.
 
     The flat search results are enriched with ``--dump-single-json`` metadata
     (up to ``details_limit`` tracks) before scoring. The function never
     downloads audio: the caller downloads only the candidate returned as
     selected.
     """
-    opts = (options or FallbackOptions()).with_overrides(overrides)
+    opts = options or FallbackOptions()
     return _run_fallback(artist, title, duration, opts)
 
 

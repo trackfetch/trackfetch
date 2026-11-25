@@ -25,7 +25,7 @@ from .loader import (
     normalize_disable_sources,
     parse_bool,
 )
-from .model import SourceConfig
+from .model import LyricsOptions, SoundcloudPolicy, SourceConfig, Thresholds
 from .validate import threshold_value
 
 
@@ -239,17 +239,23 @@ def build_source_config(args, settings):
     match_threshold, title_threshold = _resolve_thresholds(args, settings)
 
     return SourceConfig(
-        sources,
-        providers=providers,
-        match_threshold=match_threshold,
-        title_threshold=title_threshold,
-        none_selected=none_selected,
-        lyrics_enabled=lyrics_enabled,
-        cache_enabled=cache_enabled,
-        lyrics_type=lyrics_type,
-        soundcloud_min_score=soundcloud_min_score,
-        soundcloud_min_margin=soundcloud_min_margin,
-        soundcloud_trigger=soundcloud_trigger,
-        soundcloud_ambiguous=soundcloud_ambiguous,
+        metadata_sources=sources,
         music_sources=music_sources,
+        providers=providers,
+        thresholds=Thresholds(
+            match=match_threshold,
+            title=title_threshold,
+        ),
+        soundcloud=SoundcloudPolicy(
+            min_score=soundcloud_min_score,
+            min_margin=soundcloud_min_margin,
+            trigger=soundcloud_trigger,
+            ambiguous=soundcloud_ambiguous,
+        ),
+        lyrics=LyricsOptions(
+            enabled=lyrics_enabled,
+            type=lyrics_type,
+            cache=cache_enabled,
+        ),
+        none_selected=none_selected,
     )

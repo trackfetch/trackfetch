@@ -41,14 +41,50 @@ def make_config(
         providers[name] = entry
 
     return m.SourceConfig(
-        sources,
-        youtube,
-        providers,
-        thresholds[0],
-        thresholds[1],
-        none_selected,
-        soundcloud_enabled=soundcloud,
+        metadata_sources=sources,
+        music_sources=[
+            name
+            for name, enabled in (
+                ("youtube", youtube),
+                ("soundcloud", soundcloud),
+            )
+            if enabled
+        ],
+        providers=providers,
+        thresholds=m.Thresholds(
+            match=thresholds[0],
+            title=thresholds[1],
+        ),
+        none_selected=none_selected,
     )
+
+
+class TestSourceConfigModel:
+    def test_unknown_keyword_is_rejected(self):
+        with pytest.raises(TypeError, match="unexpected keyword argument"):
+            m.SourceConfig(
+                metadata_sources=["itunes"],
+                music_sources=["youtube"],
+                match_threshol=0.5,
+            )
+
+    def test_group_defaults_keep_flat_accessors(self):
+        config = m.SourceConfig(
+            metadata_sources=["itunes"],
+            music_sources=["youtube", "soundcloud"],
+        )
+
+        assert config.thresholds == m.Thresholds()
+        assert config.soundcloud == m.SoundcloudPolicy()
+        assert config.lyrics == m.LyricsOptions()
+        assert config.match_threshold == m.DEFAULT_MATCH_THRESHOLD
+        assert config.title_threshold == m.DEFAULT_TITLE_THRESHOLD
+        assert config.youtube_enabled is True
+        assert config.soundcloud_enabled is True
+
+    def test_option_groups_are_frozen(self):
+        with pytest.raises(AttributeError):
+            m.Thresholds().match = 0.1
 
 
 class FakeResponse:

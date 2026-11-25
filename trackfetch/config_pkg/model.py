@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """The resolved source configuration and its presentation helpers."""
 
+from dataclasses import dataclass, field
+
 from ..config_pkg.constants import (
     ARTWORK_FALLBACKS,
     CACHE_DEFAULT_ENABLED,
@@ -12,7 +14,6 @@ from ..config_pkg.constants import (
     METADATA_PROVIDERS,
     MUSIC_PROVIDERS,
     SOUNDCLOUD_DEFAULT_AMBIGUOUS,
-    SOUNDCLOUD_DEFAULT_ENABLED,
     SOUNDCLOUD_DEFAULT_TRIGGER,
     SOUNDCLOUD_MIN_MARGIN,
     SOUNDCLOUD_MIN_SCORE,
@@ -21,94 +22,97 @@ from ..config_pkg.constants import (
 from ..enums import MusicSource
 from ..ui import colors
 
-_SOURCE_OPTIONS = {
-    "match_threshold": DEFAULT_MATCH_THRESHOLD,
-    "title_threshold": DEFAULT_TITLE_THRESHOLD,
-    "none_selected": False,
-    "lyrics_enabled": LYRICS_DEFAULT_ENABLED,
-    "cache_enabled": CACHE_DEFAULT_ENABLED,
-    "lyrics_type": DEFAULT_LYRICS_TYPE,
-    "soundcloud_enabled": SOUNDCLOUD_DEFAULT_ENABLED,
-    "soundcloud_min_score": SOUNDCLOUD_MIN_SCORE,
-    "soundcloud_min_margin": SOUNDCLOUD_MIN_MARGIN,
-    "soundcloud_trigger": SOUNDCLOUD_DEFAULT_TRIGGER,
-    "soundcloud_ambiguous": SOUNDCLOUD_DEFAULT_AMBIGUOUS,
-    "music_sources": None,
-}
+
+@dataclass(frozen=True)
+class Thresholds:
+    """Score thresholds for metadata matching."""
+
+    match: float = DEFAULT_MATCH_THRESHOLD
+    title: float = DEFAULT_TITLE_THRESHOLD
 
 
+@dataclass(frozen=True)
+class SoundcloudPolicy:
+    """When and how the SoundCloud fallback is allowed to run."""
+
+    min_score: float = SOUNDCLOUD_MIN_SCORE
+    min_margin: float = SOUNDCLOUD_MIN_MARGIN
+    trigger: str = SOUNDCLOUD_DEFAULT_TRIGGER
+    ambiguous: str = SOUNDCLOUD_DEFAULT_AMBIGUOUS
+
+
+@dataclass(frozen=True)
+class LyricsOptions:
+    """Lyrics embedding and metadata cache toggles."""
+
+    enabled: bool = LYRICS_DEFAULT_ENABLED
+    type: str = DEFAULT_LYRICS_TYPE
+    cache: bool = CACHE_DEFAULT_ENABLED
+
+
+@dataclass
 class SourceConfig:
-    """The resolved, immutable-in-practice source configuration for one run.
+    """The resolved source configuration for one run.
 
     ``music_sources`` is the single source of truth for the music provider
     priority. ``youtube_enabled`` and ``soundcloud_enabled`` are computed
-    properties kept for the public facade; assigning to them raises.
+    properties kept for the public facade.
 
-    The optional settings stay available under their historical keyword names
-    and positional order. ``*options``/``**overrides`` keep the constructor
-    signature readable while accepting every old call unchanged.
+    The constructor only accepts the declared fields, so a misspelled keyword
+    raises ``TypeError`` instead of being silently ignored. The flat accessors
+    (``match_threshold``, ``soundcloud_trigger`` and friends) remain available
+    as read-only properties for existing consumers.
     """
 
-    def __init__(
-        self,
-        metadata_sources,
-        youtube_enabled=True,
-        providers=None,
-        *options,
-        **overrides,
-    ):
-        if len(options) > len(_SOURCE_OPTIONS):
-            raise TypeError(
-                "SourceConfig() takes at most "
-                f"{3 + len(_SOURCE_OPTIONS)} positional arguments"
-            )
+    metadata_sources: list
+    music_sources: list
+    providers: dict = field(default_factory=dict)
+    thresholds: Thresholds = field(default_factory=Thresholds)
+    soundcloud: SoundcloudPolicy = field(default_factory=SoundcloudPolicy)
+    lyrics: LyricsOptions = field(default_factory=LyricsOptions)
+    none_selected: bool = False
 
-        values = dict(zip(_SOURCE_OPTIONS, options, strict=False))
+    def __post_init__(self):
+        self.metadata_sources = list(self.metadata_sources)
+        self.music_sources = list(self.music_sources)
+        self.providers = self.providers if self.providers is not None else {}
+        self.none_selected = bool(self.none_selected)
 
-        for name in values:
-            if name in overrides:
-                raise TypeError(
-                    "SourceConfig() got multiple values for argument "
-                    f"'{name}'"
-                )
+    @property
+    def match_threshold(self) -> float:
+        return self.thresholds.match
 
-        unknown = set(overrides) - set(_SOURCE_OPTIONS)
+    @property
+    def title_threshold(self) -> float:
+        return self.thresholds.title
 
-        if unknown:
-            raise TypeError(
-                "SourceConfig() got an unexpected keyword argument "
-                f"'{sorted(unknown)[0]}'"
-            )
+    @property
+    def lyrics_enabled(self) -> bool:
+        return self.lyrics.enabled
 
-        values = {**_SOURCE_OPTIONS, **values, **overrides}
-        self.metadata_sources = list(metadata_sources)
-        self.providers = providers if providers is not None else {}
-        self.match_threshold = values["match_threshold"]
-        self.title_threshold = values["title_threshold"]
-        self.none_selected = bool(values["none_selected"])
-        self.lyrics_enabled = bool(values["lyrics_enabled"])
-        self.cache_enabled = bool(values["cache_enabled"])
-        self.lyrics_type = values["lyrics_type"]
-        self.soundcloud_min_score = values["soundcloud_min_score"]
-        self.soundcloud_min_margin = values["soundcloud_min_margin"]
-        self.soundcloud_trigger = values["soundcloud_trigger"]
-        self.soundcloud_ambiguous = values["soundcloud_ambiguous"]
+    @property
+    def cache_enabled(self) -> bool:
+        return self.lyrics.cache
 
-        music_sources = values["music_sources"]
+    @property
+    def lyrics_type(self) -> str:
+        return self.lyrics.type
 
-        if music_sources is not None:
-            self.music_sources = list(music_sources)
-        else:
-            # Keep direct SourceConfig users compatible: derive the priority
-            # from the two legacy enabled flags.
-            self.music_sources = [
-                name
-                for name, enabled in (
-                    (MusicSource.YOUTUBE.value, youtube_enabled),
-                    (MusicSource.SOUNDCLOUD.value, values["soundcloud_enabled"]),
-                )
-                if enabled
-            ]
+    @property
+    def soundcloud_min_score(self) -> float:
+        return self.soundcloud.min_score
+
+    @property
+    def soundcloud_min_margin(self) -> float:
+        return self.soundcloud.min_margin
+
+    @property
+    def soundcloud_trigger(self) -> str:
+        return self.soundcloud.trigger
+
+    @property
+    def soundcloud_ambiguous(self) -> str:
+        return self.soundcloud.ambiguous
 
     @property
     def youtube_enabled(self) -> bool:
