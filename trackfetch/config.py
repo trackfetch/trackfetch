@@ -32,18 +32,24 @@ from .constants import (
     SOUNDCLOUD_TRIGGERS,
     VOCALOID_HINTS,
 )
+from .enums import MusicSource
 
 
 class SourceConfig:
-    """The resolved, immutable-in-practice source configuration for one run."""
+    """The resolved, immutable-in-practice source configuration for one run.
+
+    ``music_sources`` is the single source of truth for the music provider
+    priority. ``youtube_enabled`` and ``soundcloud_enabled`` are computed
+    properties kept for the public facade; assigning to them raises.
+    """
 
     def __init__(
         self,
         metadata_sources,
-        youtube_enabled,
-        providers,
-        match_threshold,
-        title_threshold,
+        youtube_enabled=True,
+        providers=None,
+        match_threshold=DEFAULT_MATCH_THRESHOLD,
+        title_threshold=DEFAULT_TITLE_THRESHOLD,
         none_selected=False,
         lyrics_enabled=LYRICS_DEFAULT_ENABLED,
         cache_enabled=CACHE_DEFAULT_ENABLED,
@@ -56,33 +62,39 @@ class SourceConfig:
         music_sources=None,
     ):
         self.metadata_sources = list(metadata_sources)
-        self.youtube_enabled = bool(youtube_enabled)
-        self.providers = providers
+        self.providers = providers if providers is not None else {}
         self.match_threshold = match_threshold
         self.title_threshold = title_threshold
         self.none_selected = bool(none_selected)
         self.lyrics_enabled = bool(lyrics_enabled)
         self.cache_enabled = bool(cache_enabled)
         self.lyrics_type = lyrics_type
-        self.soundcloud_enabled = bool(soundcloud_enabled)
         self.soundcloud_min_score = soundcloud_min_score
         self.soundcloud_min_margin = soundcloud_min_margin
         self.soundcloud_trigger = soundcloud_trigger
         self.soundcloud_ambiguous = soundcloud_ambiguous
 
-        if music_sources is None:
+        if music_sources is not None:
+            self.music_sources = list(music_sources)
+        else:
             # Keep direct SourceConfig users compatible: derive the priority
             # from the two legacy enabled flags.
-            music_sources = [
+            self.music_sources = [
                 name
                 for name, enabled in (
-                    ("youtube", self.youtube_enabled),
-                    ("soundcloud", self.soundcloud_enabled),
+                    (MusicSource.YOUTUBE.value, youtube_enabled),
+                    (MusicSource.SOUNDCLOUD.value, soundcloud_enabled),
                 )
                 if enabled
             ]
 
-        self.music_sources = list(music_sources)
+    @property
+    def youtube_enabled(self) -> bool:
+        return MusicSource.YOUTUBE.value in self.music_sources
+
+    @property
+    def soundcloud_enabled(self) -> bool:
+        return MusicSource.SOUNDCLOUD.value in self.music_sources
 
     def is_music_enabled(self, name: str) -> bool:
         return name in self.music_sources
@@ -153,7 +165,11 @@ def normalize_music_sources(value: str):
 
 def normalize_disable_sources(value: str):
     names = []
-    allowed = METADATA_PROVIDERS + ARTWORK_FALLBACKS + ("soundcloud",)
+    allowed = (
+        METADATA_PROVIDERS
+        + ARTWORK_FALLBACKS
+        + (MusicSource.SOUNDCLOUD.value,)
+    )
 
     for name in split_source_names(value):
         if name not in allowed:
@@ -507,9 +523,6 @@ def build_source_config(args, settings):
             f"(choose from {', '.join(MUSIC_PROVIDERS)})"
         )
 
-    youtube_enabled = "youtube" in music_sources
-    soundcloud_enabled = "soundcloud" in music_sources
-
     lyrics_enabled = LYRICS_DEFAULT_ENABLED
 
     if "lyrics_enabled" in settings and str(settings["lyrics_enabled"]).strip():
@@ -652,20 +665,18 @@ def build_source_config(args, settings):
 
     return SourceConfig(
         sources,
-        youtube_enabled,
-        providers,
-        match_threshold,
-        title_threshold,
-        none_selected,
-        lyrics_enabled,
-        cache_enabled,
-        lyrics_type,
-        soundcloud_enabled,
-        soundcloud_min_score,
-        soundcloud_min_margin,
-        soundcloud_trigger,
-        soundcloud_ambiguous,
-        music_sources,
+        providers=providers,
+        match_threshold=match_threshold,
+        title_threshold=title_threshold,
+        none_selected=none_selected,
+        lyrics_enabled=lyrics_enabled,
+        cache_enabled=cache_enabled,
+        lyrics_type=lyrics_type,
+        soundcloud_min_score=soundcloud_min_score,
+        soundcloud_min_margin=soundcloud_min_margin,
+        soundcloud_trigger=soundcloud_trigger,
+        soundcloud_ambiguous=soundcloud_ambiguous,
+        music_sources=music_sources,
     )
 
 
@@ -796,7 +807,10 @@ def format_source_list(config: SourceConfig) -> str:
         else colors.muted("disabled")
     )
 
-    if config.soundcloud_enabled and primary == "soundcloud":
+    if (
+        config.soundcloud_enabled
+        and primary == MusicSource.SOUNDCLOUD.value
+    ):
         soundcloud = colors.success(
             "enabled (primary"
             + (

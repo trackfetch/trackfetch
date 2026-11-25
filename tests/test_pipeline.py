@@ -47,7 +47,7 @@ def pipeline(monkeypatch):
         dest.write_bytes(b"\xff\xd8\xff\xe0jpeg")
 
     def fake_resolve_metadata(artist, title, source_config, runtime):
-        track = m.pipeline.find_spotify_track(None, artist, title)
+        track = fake_find_spotify(None, artist, title)
 
         if track is None:
             return m.fallback_metadata(artist, title)
@@ -57,7 +57,6 @@ def pipeline(monkeypatch):
         return metadata
 
     monkeypatch.setattr(m.pipeline, "resolve_metadata", fake_resolve_metadata)
-    monkeypatch.setattr(m.pipeline, "find_spotify_track", fake_find_spotify)
     monkeypatch.setattr(
         m.pipeline,
         "find_youtube_video",
@@ -73,7 +72,7 @@ def pipeline(monkeypatch):
 
 class TestProcessSong:
     def test_downloads_and_tags(self, pipeline, tmp_path):
-        ok, reason = m.process_song(None, "daft punk", "one more time", tmp_path, False)
+        ok, reason = m.process_song("daft punk", "one more time", tmp_path, False)
 
         assert (ok, reason) == (True, "downloaded")
         out = tmp_path / "Daft Punk - One More Time.mp3"
@@ -94,7 +93,7 @@ class TestProcessSong:
         )
 
         assert m.process_song(
-            None, "a", "b", tmp_path, False
+            "a", "b", tmp_path, False
         ) == (True, "downloaded")
 
         tags = ID3(tmp_path / "Daft Punk - One More Time.mp3")
@@ -117,7 +116,7 @@ class TestProcessSong:
         )
 
         assert m.process_song(
-            None, "a", "b", tmp_path, False, lyrics_type="sidecar"
+            "a", "b", tmp_path, False, lyrics_type="sidecar"
         ) == (True, "downloaded")
 
         audio = tmp_path / "Daft Punk - One More Time.mp3"
@@ -141,7 +140,7 @@ class TestProcessSong:
         )
 
         assert m.process_song(
-            None, "a", "b", tmp_path, False, lyrics_type="plain"
+            "a", "b", tmp_path, False, lyrics_type="plain"
         ) == (True, "downloaded")
 
         assert not (tmp_path / "Daft Punk - One More Time.lrc").exists()
@@ -169,8 +168,7 @@ class TestProcessSong:
         monkeypatch.setattr(m.pipeline, "fetch_lyrics", find_lyrics)
 
         assert m.process_song(
-            None,
-            "a",
+                        "a",
             "b",
             tmp_path,
             False,
@@ -190,7 +188,7 @@ class TestProcessSong:
         )
 
         assert m.process_song(
-            None, "a", "b", tmp_path, False
+            "a", "b", tmp_path, False
         ) == (True, "downloaded")
         assert "Lyrics: synced (embedded)" in capsys.readouterr().out
 
@@ -202,7 +200,7 @@ class TestProcessSong:
         )
 
         assert m.process_song(
-            None, "a", "b", tmp_path, False
+            "a", "b", tmp_path, False
         ) == (True, "downloaded")
         assert (
             "Lyrics: plain only (no synced version)"
@@ -213,7 +211,7 @@ class TestProcessSong:
         self, pipeline, tmp_path, capsys
     ):
         assert m.process_song(
-            None, "a", "b", tmp_path, False
+            "a", "b", tmp_path, False
         ) == (True, "downloaded")
 
         tags = ID3(tmp_path / "Daft Punk - One More Time.mp3")
@@ -239,8 +237,7 @@ class TestProcessSong:
         )
 
         assert m.process_song(
-            None,
-            "a",
+                        "a",
             "b",
             tmp_path,
             False,
@@ -251,7 +248,7 @@ class TestProcessSong:
 
 
     def test_opus(self, pipeline, tmp_path):
-        assert m.process_song(None, "a", "b", tmp_path, False, "opus") == (True, "downloaded")
+        assert m.process_song("a", "b", tmp_path, False, "opus") == (True, "downloaded")
         tags = OggOpus(tmp_path / "Daft Punk - One More Time.opus")
         assert tags["TITLE"] == ["One More Time"]
         assert tags["METADATA_BLOCK_PICTURE"]
@@ -267,7 +264,7 @@ class TestProcessSong:
             },
         )
 
-        assert m.process_song(None, "a", "b", tmp_path, False, "opus") == (True, "downloaded")
+        assert m.process_song("a", "b", tmp_path, False, "opus") == (True, "downloaded")
 
         tags = OggOpus(tmp_path / "Daft Punk - One More Time.opus")
         assert tags["LYRICS"] == ["[00:01.00]Words"]
@@ -283,44 +280,44 @@ class TestProcessSong:
             },
         )
 
-        assert m.process_song(None, "a", "b", tmp_path, False, "m4a") == (True, "downloaded")
+        assert m.process_song("a", "b", tmp_path, False, "m4a") == (True, "downloaded")
 
         tags = MP4(tmp_path / "Daft Punk - One More Time.m4a")
         assert tags["\xa9lyr"] == ["[00:01.00]Words"]
         assert bytes(tags[m.M4A_SYNCED_LYRICS_KEY][0]).decode("utf-8") == "[00:01.00]Words"
 
     def test_m4a(self, pipeline, tmp_path):
-        assert m.process_song(None, "a", "b", tmp_path, False, "m4a") == (True, "downloaded")
+        assert m.process_song("a", "b", tmp_path, False, "m4a") == (True, "downloaded")
         tags = MP4(tmp_path / "Daft Punk - One More Time.m4a")
         assert tags["\xa9alb"] == ["Discovery"]
         assert tags["covr"]
 
     def test_existing_file_check_uses_format_extension(self, pipeline, tmp_path):
         (tmp_path / "Daft Punk - One More Time.mp3").write_bytes(b"")
-        assert m.process_song(None, "a", "b", tmp_path, False, "opus") == (True, "downloaded")
+        assert m.process_song("a", "b", tmp_path, False, "opus") == (True, "downloaded")
 
     def test_title_only(self, pipeline, tmp_path):
-        m.process_song(None, "a", "b", tmp_path, True)
+        m.process_song("a", "b", tmp_path, True)
         assert (tmp_path / "One More Time.mp3").exists()
 
     def test_skips_existing_file(self, pipeline, tmp_path):
         (tmp_path / "Daft Punk - One More Time.mp3").write_bytes(b"")
-        assert m.process_song(None, "a", "b", tmp_path, False) == (True, "exists")
+        assert m.process_song("a", "b", tmp_path, False) == (True, "exists")
         assert pipeline["downloaded_urls"] == []
 
     def test_uses_input_when_spotify_has_no_match(self, pipeline, tmp_path):
         pipeline["track"] = None
-        assert m.process_song(None, "Unknown", "Demo", tmp_path, False)[0]
+        assert m.process_song("Unknown", "Demo", tmp_path, False)[0]
         assert ID3(tmp_path / "Unknown - Demo.mp3")["TPE1"].text == ["Unknown"]
 
     def test_prefers_webpage_url(self, pipeline, tmp_path):
         pipeline["video"] = {"webpage_url": "https://w", "url": "https://u", "id": "i"}
-        m.process_song(None, "a", "b", tmp_path, False)
+        m.process_song("a", "b", tmp_path, False)
         assert pipeline["downloaded_urls"] == ["https://w"]
 
     def test_no_youtube_result(self, pipeline, tmp_path):
         pipeline["video"] = None
-        assert m.process_song(None, "a", "b", tmp_path, False) == (False, "no YouTube result")
+        assert m.process_song("a", "b", tmp_path, False) == (False, "no YouTube result")
 
     def test_no_confident_youtube_match(self, pipeline, tmp_path, monkeypatch):
         def no_match(artist, title, duration=None):
@@ -330,7 +327,7 @@ class TestProcessSong:
         monkeypatch.setattr(m.pipeline, "find_youtube_video", no_match)
 
         assert m.process_song(
-            None, "a", "b", tmp_path, False
+            "a", "b", tmp_path, False
         ) == (False, "no confident YouTube match")
 
     def test_ytdlp_search_failure(self, pipeline, tmp_path, monkeypatch):
@@ -340,7 +337,7 @@ class TestProcessSong:
         monkeypatch.setattr(m.pipeline, "find_youtube_video", search_failed)
 
         assert m.process_song(
-            None, "a", "b", tmp_path, False
+            "a", "b", tmp_path, False
         ) == (False, "yt-dlp search failed")
 
     def test_music_fallback_with_no_match_is_not_a_result(
@@ -370,21 +367,21 @@ class TestProcessSong:
         )
 
         assert m.process_song(
-            None, "a", "b", tmp_path, False
+            "a", "b", tmp_path, False
         ) == (False, "no confident YouTube match")
 
     def test_invalid_youtube_result(self, pipeline, tmp_path):
         pipeline["video"] = {"title": "no id"}
-        assert m.process_song(None, "a", "b", tmp_path, False) == (False, "invalid YouTube result")
+        assert m.process_song("a", "b", tmp_path, False) == (False, "invalid YouTube result")
 
     def test_download_failure(self, pipeline, tmp_path):
         pipeline["download_ok"] = False
-        assert m.process_song(None, "a", "b", tmp_path, False) == (False, "yt-dlp download failed")
+        assert m.process_song("a", "b", tmp_path, False) == (False, "yt-dlp download failed")
         assert not list(tmp_path.glob("*.mp3"))
 
     def test_cover_failure_is_not_fatal(self, pipeline, tmp_path, capsys):
         pipeline["cover_ok"] = False
-        assert m.process_song(None, "a", "b", tmp_path, False) == (True, "downloaded")
+        assert m.process_song("a", "b", tmp_path, False) == (True, "downloaded")
         assert not ID3(tmp_path / "Daft Punk - One More Time.mp3").getall("APIC")
         assert "cover download failed" in capsys.readouterr().out
 
@@ -397,7 +394,7 @@ class TestProcessSong:
         monkeypatch.setattr(m.pipeline, "write_lrc_sidecar", boom)
 
         assert m.process_song(
-            None, "a", "b", tmp_path, False
+            "a", "b", tmp_path, False
         ) == (True, "downloaded")
         assert "could not write LRC file" in capsys.readouterr().out
 
@@ -406,14 +403,14 @@ class TestProcessSong:
             raise ValueError("bad tag")
 
         monkeypatch.setattr(m.pipeline, "add_metadata", boom)
-        assert m.process_song(None, "a", "b", tmp_path, False) == (False, "metadata error: bad tag")
+        assert m.process_song("a", "b", tmp_path, False) == (False, "metadata error: bad tag")
 
     def test_move_error(self, pipeline, tmp_path, monkeypatch):
         def boom(src, dst):
             raise OSError("disk full")
 
         monkeypatch.setattr(shutil, "move", boom)
-        assert m.process_song(None, "a", "b", tmp_path, False) == (False, "move error: disk full")
+        assert m.process_song("a", "b", tmp_path, False) == (False, "move error: disk full")
 
 
 def run_cli(monkeypatch, *args):
@@ -437,16 +434,29 @@ class TestMain:
         out = tmp_path / "out" / "nested"
 
         def video_for(artist, title, duration=None):
-            return None if pipeline["searched"][-1] == ("Bad", "Song") else pipeline["video"]
+            if not pipeline["searched"]:
+                return pipeline["video"]
+
+            return (
+                None
+                if pipeline["searched"][-1] == ("Bad", "Song")
+                else pipeline["video"]
+            )
 
         monkeypatch.setattr(m.pipeline, "find_youtube_video", video_for)
-        real_find = m.pipeline.find_spotify_track
 
-        def spotify_for(sp, artist, title):
-            track = real_find(sp, artist, title)
-            return track if artist != "Bad" else None
+        def spotify_for(artist, title, source_config, runtime):
+            pipeline["searched"].append((artist, title))
 
-        monkeypatch.setattr(m.pipeline, "find_spotify_track", spotify_for)
+            if artist == "Bad":
+                return m.fallback_metadata(artist, title)
+
+            track = pipeline["track"]
+            metadata = m.get_track_metadata(track, artist, title)
+            metadata.update(source="spotify", score=1.0)
+            return metadata
+
+        monkeypatch.setattr(m.pipeline, "resolve_metadata", spotify_for)
 
         run_cli(monkeypatch, songs, "-o", out, "--delay", "0")
         log = capsys.readouterr().out
@@ -476,11 +486,16 @@ class TestMain:
         def video_for(artist, title, duration=None):
             return None if artist == "Bad" else pipeline["video"]
 
-        def spotify_for(sp, artist, title):
-            return None if artist == "Bad" else pipeline["track"]
+        def spotify_for(artist, title, source_config, runtime):
+            if artist == "Bad":
+                return m.fallback_metadata(artist, title)
+
+            metadata = m.get_track_metadata(pipeline["track"], artist, title)
+            metadata.update(source="spotify", score=1.0)
+            return metadata
 
         monkeypatch.setattr(m.pipeline, "find_youtube_video", video_for)
-        monkeypatch.setattr(m.pipeline, "find_spotify_track", spotify_for)
+        monkeypatch.setattr(m.pipeline, "resolve_metadata", spotify_for)
 
         run_cli(monkeypatch, songs, "-o", out, "--delay", "0")
 
@@ -516,11 +531,16 @@ class TestMain:
         def video_for(artist, title, duration=None):
             return None if artist == "Bad" else pipeline["video"]
 
-        def spotify_for(sp, artist, title):
-            return None if artist == "Bad" else pipeline["track"]
+        def spotify_for(artist, title, source_config, runtime):
+            if artist == "Bad":
+                return m.fallback_metadata(artist, title)
+
+            metadata = m.get_track_metadata(pipeline["track"], artist, title)
+            metadata.update(source="spotify", score=1.0)
+            return metadata
 
         monkeypatch.setattr(m.pipeline, "find_youtube_video", video_for)
-        monkeypatch.setattr(m.pipeline, "find_spotify_track", spotify_for)
+        monkeypatch.setattr(m.pipeline, "resolve_metadata", spotify_for)
 
         run_cli(monkeypatch, songs, "-o", out, "--no-logs", "--delay", "0")
         log = capsys.readouterr().out
@@ -726,8 +746,7 @@ class TestSoundcloudFallbackIntegration:
         )
 
         ok, reason = m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -752,8 +771,7 @@ class TestSoundcloudFallbackIntegration:
         monkeypatch.setattr(m.pipeline.soundcloud, "soundcloud_search", boom)
 
         assert m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -771,8 +789,7 @@ class TestSoundcloudFallbackIntegration:
         )
 
         assert m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -790,8 +807,7 @@ class TestSoundcloudFallbackIntegration:
         )
 
         assert m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -809,8 +825,7 @@ class TestSoundcloudFallbackIntegration:
         )
 
         assert m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -828,8 +843,7 @@ class TestSoundcloudFallbackIntegration:
         )
 
         ok, reason = m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -851,8 +865,7 @@ class TestSoundcloudFallbackIntegration:
         )
 
         ok, reason = m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -885,8 +898,7 @@ class TestSoundcloudFallbackIntegration:
         )
 
         ok, reason = m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -923,10 +935,10 @@ class TestSoundcloudFallbackIntegration:
 
         config = self.config()
         m.process_song(
-            None, "Daft Punk", "One More Time", tmp_path, False, source_config=config
+            "Daft Punk", "One More Time", tmp_path, False, source_config=config
         )
         m.process_song(
-            None, "Daft Punk", "One More Time", tmp_path, False, source_config=config
+            "Daft Punk", "One More Time", tmp_path, False, source_config=config
         )
 
         assert len(calls) == 1
@@ -971,8 +983,7 @@ class TestSoundcloudFallbackIntegration:
         )
 
         assert m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1001,8 +1012,7 @@ class TestSoundcloudFallbackIntegration:
         )
 
         ok, reason = m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1048,8 +1058,7 @@ class TestSoundcloudFallbackIntegration:
         )
 
         assert m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1084,8 +1093,7 @@ class TestSoundcloudFallbackIntegration:
         )
 
         ok, reason = m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1111,8 +1119,7 @@ class TestSoundcloudFallbackIntegration:
         )
 
         ok, reason = m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1181,8 +1188,7 @@ class TestSoundcloudTrigger:
         )
 
         assert m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1212,8 +1218,7 @@ class TestSoundcloudTrigger:
         )
 
         ok, reason = m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1239,8 +1244,7 @@ class TestSoundcloudTrigger:
         monkeypatch.setattr(m.pipeline, "find_youtube_video", failing_search)
 
         assert m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1271,8 +1275,7 @@ class TestSoundcloudTrigger:
         )
 
         ok, _reason = m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1303,8 +1306,7 @@ class TestSoundcloudTrigger:
         )
 
         assert m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1327,8 +1329,7 @@ class TestSoundcloudTrigger:
         )
 
         assert m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1366,8 +1367,7 @@ class TestSoundcloudTrigger:
         )
 
         ok, _reason = m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1399,8 +1399,7 @@ class TestSoundcloudTrigger:
         )
 
         assert m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1432,8 +1431,7 @@ class TestSoundcloudTrigger:
         )
 
         assert m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1496,8 +1494,7 @@ class TestMusicPriority:
         )
 
         ok, reason = m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1515,8 +1512,7 @@ class TestMusicPriority:
         self.setup_soundcloud(monkeypatch, results=[])
 
         ok, reason = m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1539,8 +1535,7 @@ class TestMusicPriority:
         )
 
         ok, reason = m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1572,8 +1567,7 @@ class TestMusicPriority:
         )
 
         assert m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -1600,8 +1594,7 @@ class TestMusicPriority:
         monkeypatch.setattr(m.pipeline, "download_audio", fake_download)
 
         ok, reason = m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,

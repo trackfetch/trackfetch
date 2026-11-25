@@ -2294,8 +2294,7 @@ class TestYoutubeFallback:
         config = make_config([], youtube=False, soundcloud=False, none_selected=True)
 
         ok, reason = m.process_song(
-            None,
-            "Daft Punk",
+                        "Daft Punk",
             "One More Time",
             tmp_path,
             False,
@@ -2369,8 +2368,7 @@ class TestYoutubeFallback:
         runtime = make_runtime(EmptyLyricsSession())
 
         ok, reason = m.process_song(
-            None,
-            "A",
+                        "A",
             "B",
             tmp_path,
             False,
@@ -2782,8 +2780,7 @@ class TestProcessSongDefaults:
         monkeypatch.setattr(m.pipeline, "find_youtube_video", lambda a, t, d=None: None)
 
         ok, reason = m.process_song(
-            None,
-            "A",
+                        "A",
             "B",
             tmp_path,
             False,

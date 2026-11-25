@@ -23,6 +23,7 @@ from .constants import (
     METADATA_PROVIDERS,
     VERSION,
 )
+from .enums import MusicSource
 from .files import append_line, parse_song, read_done, read_song_file
 from .helpfmt import TrackFetchHelpFormatter
 from .settings import apply_config, load_config, resolve_output
@@ -822,7 +823,10 @@ def main():
         "any": "any failed YouTube search or download",
     }
 
-    if source_config.primary_music_source == "soundcloud":
+    if (
+        source_config.primary_music_source
+        == MusicSource.SOUNDCLOUD.value
+    ):
         soundcloud_status = "primary" + (
             "; YouTube fallback on failure"
             if source_config.youtube_enabled
@@ -895,7 +899,6 @@ def main():
             continue
 
         ok, reason = process_song(
-            None,
             artist,
             title,
             args.output,

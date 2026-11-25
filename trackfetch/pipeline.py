@@ -12,17 +12,17 @@ from . import colors, soundcloud, youtube
 from .config import build_source_config
 from .constants import (
     DEFAULT_AUDIO_QUALITY,
-    DEFAULT_LYRICS_TYPE,
+    DEFAULT_FORMAT,
     LYRICS_DEFAULT_ENABLED,
     SOUNDCLOUD_DEFAULT_AMBIGUOUS,
     SOUNDCLOUD_DEFAULT_TRIGGER,
 )
+from .enums import MusicSource
 from .errors import CoverError, ProviderError, YoutubeSearchError
 from .files import make_filename
 from .images import download_best_cover
 from .lyrics import fetch_lyrics, write_lrc_sidecar
 from .providers.resolver import resolve_metadata
-from .providers.spotify import find_spotify_track, get_track_metadata
 from .tags import add_metadata
 from .youtube import (
     download_audio,
@@ -533,50 +533,29 @@ def _youtube_attempt(
 
 
 def process_song(
-    sp,
     input_artist,
     input_title,
     output,
     title_only,
-    audio_format="mp3",
+    audio_format=DEFAULT_FORMAT,
     audio_quality=DEFAULT_AUDIO_QUALITY,
     source_config=None,
     runtime=None,
     lyrics_type=None,
 ):
-    if source_config is None and runtime is None:
-        track = find_spotify_track(
-            sp,
-            input_artist,
-            input_title,
-        )
+    if source_config is None:
+        source_config = build_source_config(None, {})
 
-        metadata = get_track_metadata(
-            track,
-            input_artist,
-            input_title,
-        )
-        metadata.setdefault("source", "spotify")
-        youtube_enabled = True
-
-    else:
-        if source_config is None:
-            source_config = build_source_config(None, {})
-
-        metadata = resolve_metadata(
-            input_artist,
-            input_title,
-            source_config,
-            runtime,
-        )
-        youtube_enabled = source_config.youtube_enabled
+    metadata = resolve_metadata(
+        input_artist,
+        input_title,
+        source_config,
+        runtime,
+    )
+    youtube_enabled = source_config.youtube_enabled
 
     if lyrics_type is None:
-        lyrics_type = (
-            source_config.lyrics_type
-            if source_config is not None
-            else DEFAULT_LYRICS_TYPE
-        )
+        lyrics_type = source_config.lyrics_type
 
     print(
         f"{colors.label('Metadata:')} "
@@ -594,27 +573,13 @@ def process_song(
         print(f"{colors.skip('SKIP:')} already exists: {filename}")
         return True, "exists"
 
-    if source_config is None:
-        music_sources = ["youtube"]
-    else:
-        music_sources = list(getattr(source_config, "music_sources", ()) or [])
-
-        if not music_sources:
-            # Hand-built configurations predate music_sources.
-            music_sources = [
-                name
-                for name, enabled in (
-                    ("youtube", source_config.youtube_enabled),
-                    ("soundcloud", source_config.soundcloud_enabled),
-                )
-                if enabled
-            ]
+    music_sources = list(source_config.music_sources)
 
     if not music_sources:
         print(f"{colors.error('FAILED:')} No music sources enabled")
         return False, "no music sources enabled"
 
-    if music_sources[0] == "soundcloud":
+    if music_sources[0] == MusicSource.SOUNDCLOUD.value:
         ok, reason = _soundcloud_fallback(
             metadata,
             output,
@@ -631,7 +596,7 @@ def process_song(
         if ok:
             return ok, reason
 
-        if "youtube" not in music_sources:
+        if MusicSource.YOUTUBE.value not in music_sources:
             return ok, reason
 
         print(
@@ -669,5 +634,7 @@ def process_song(
         lyrics_type,
         youtube_enabled,
         fallback_names=(input_artist, input_title),
-        allow_soundcloud_fallback="soundcloud" in music_sources,
+        allow_soundcloud_fallback=(
+            MusicSource.SOUNDCLOUD.value in music_sources
+        ),
     )
