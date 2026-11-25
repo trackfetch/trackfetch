@@ -1606,3 +1606,107 @@ class TestMusicPriority:
             "https://www.youtube.com/watch?v=abc",
             "https://soundcloud.com/daftpunk/one-more-time",
         ]
+
+
+class TestSourceOrderAndTriggers:
+    """The two source orders and every trigger must keep their old meaning."""
+
+    def config(self, **overrides):
+        values = {
+            "metadata_sources": None,
+            "music_sources": None,
+            "disable_sources": None,
+            "provider_opt": None,
+            "match_threshold": None,
+            "title_threshold": None,
+        }
+        values.update(overrides)
+        return m.build_source_config(argparse.Namespace(**values), {})
+
+    def candidate(self):
+        return {
+            "id": "850231564",
+            "title": "Daft Punk - One More Time",
+            "track": "Daft Punk - One More Time",
+            "duration": 200,
+            "uploader": "Daft Punk",
+            "webpage_url": "https://soundcloud.com/daftpunk/one-more-time",
+        }
+
+    @pytest.mark.parametrize(
+        "order",
+        ["youtube,soundcloud", "soundcloud,youtube"],
+    )
+    @pytest.mark.parametrize(
+        ("trigger", "youtube_error"),
+        [
+            (
+                "age",
+                "ERROR: Sign in to confirm your age.",
+            ),
+            (
+                "blocked",
+                "ERROR: Sign in to confirm you're not a bot.",
+            ),
+            (
+                "any",
+                "ERROR: HTTP Error 500",
+            ),
+        ],
+    )
+    def test_every_order_and_trigger_reaches_soundcloud(
+        self,
+        pipeline,
+        monkeypatch,
+        tmp_path,
+        order,
+        trigger,
+        youtube_error,
+    ):
+        from trackfetch import soundcloud
+
+        soundcloud.reset_attempts()
+        monkeypatch.setattr(
+            m.pipeline.soundcloud,
+            "soundcloud_search",
+            lambda query, limit=5: [self.candidate()],
+        )
+        monkeypatch.setattr(
+            m.pipeline.soundcloud,
+            "soundcloud_track_details",
+            lambda url: {},
+        )
+        monkeypatch.setattr(
+            m.pipeline,
+            "probe_age_restriction",
+            lambda *a, **k: False,
+        )
+
+        urls = []
+
+        def fake_download(url, temp_dir, audio_format="mp3", audio_quality=None):
+            urls.append(url)
+
+            if "youtube" in url:
+                m.youtube.LAST_DOWNLOAD_ERROR = youtube_error
+                return None
+
+            path = temp_dir / f"audio.{audio_format}"
+            path.write_bytes(b"\x00" * 64)
+            return path
+
+        monkeypatch.setattr(m.pipeline, "download_audio", fake_download)
+
+        ok, reason = m.process_song(
+            "Daft Punk",
+            "One More Time",
+            tmp_path,
+            False,
+            source_config=self.config(
+                music_sources=order,
+                soundcloud_trigger=trigger,
+            ),
+        )
+
+        assert (ok, reason) == (True, "downloaded")
+        assert urls[-1] == "https://soundcloud.com/daftpunk/one-more-time"

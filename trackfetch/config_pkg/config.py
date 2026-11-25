@@ -101,7 +101,7 @@ class SourceConfig:
 
     @property
     def primary_music_source(self):
-        return self.music_sources[0] if self.music_sources else None
+        return next(iter(self.music_sources), None)
 
     def interval(self, name: str) -> float:
         return self.providers[name]["min_interval"]
