@@ -20,6 +20,7 @@ from ..core.files import append_line, read_done
 from ..enums import MusicSource
 from ..ui import colors
 from .context import RunContext
+from .dependencies import check_ffmpeg
 from .inputs import (
     _create_output_directory,
     _deduplicate,
@@ -142,6 +143,13 @@ def run_songs(songs, logs: SongLogs, args, source_config, runtime, process_song)
 
 def _error(message):
     print(colors.error(f"ERROR: {message}"))
+    return RunSummary(1)
+
+
+def _dependency_error(problem):
+    message, hint = problem
+    print(colors.error(f"ERROR: {message}"), file=sys.stderr)
+    print(hint, file=sys.stderr)
     return RunSummary(1)
 
 
@@ -279,6 +287,11 @@ def run(settings, args) -> RunSummary:
     if args.list_sources:
         print(format_source_list(source_config))
         return RunSummary(0)
+
+    ffmpeg_problem = check_ffmpeg()
+
+    if ffmpeg_problem:
+        return _dependency_error(ffmpeg_problem)
 
     _apply_defaults(args, settings)
     delay_error = _validate_delay(args)

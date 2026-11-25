@@ -30,6 +30,19 @@ def reset_color_state():
     colors._windows_ansi_ready = windows_ready
 
 
+@pytest.fixture(autouse=True)
+def assume_ffmpeg_available(monkeypatch):
+    """Keep the suite independent of the host's FFmpeg installation."""
+    from trackfetch.core import dependencies
+
+    real_which = dependencies.shutil.which
+
+    def fake_which(command):
+        return real_which(command) or f"/usr/local/bin/{command}"
+
+    monkeypatch.setattr(dependencies.shutil, "which", fake_which)
+
+
 def make_track(
     name="Song",
     artists=("Artist",),

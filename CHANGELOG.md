@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Startup checks for `ffmpeg` and `ffprobe`: a missing tool stops the run with
+  exit code 1, names what was not found on stderr and prints an installation
+  hint for the current platform. `--help`, `--version` and `--list-sources`
+  skip the check.
+
 ### Changed
 - Internal restructuring into layered subpackages (`audio/`, `config_pkg/`,
   `core/`, `metadata/`, `tagging/`, `ui/`) with typed errors, frozen
