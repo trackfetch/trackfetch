@@ -54,7 +54,7 @@ macOS і Linux:
 brew install trackfetch/tap/trackfetch
 ```
 
-На macOS формула ставить готовий бінарник `trackfetch` і статичний готовий `ffmpeg` усередині формули, тож `ffmpeg` — та сама залежність, яку Homebrew раніше збирав годинами на Intel-маках і нових версіях macOS — більше не компілюється. `yt-dlp` і `deno`, як і раніше, ставляться з Homebrew.
+На macOS формула ставить готовий бінарник `trackfetch` і статичні готові `ffmpeg` та `ffprobe` усередині формули, тож `ffmpeg` — та сама залежність, яку Homebrew раніше збирав годинами на Intel-маках і нових версіях macOS — більше не компілюється. `yt-dlp` і `deno`, як і раніше, ставляться з Homebrew.
 
 ### Nix
 
@@ -106,8 +106,10 @@ pip install -e .
 | Програма | Навіщо | Встановлення |
 | --- | --- | --- |
 | [yt-dlp](https://github.com/yt-dlp/yt-dlp) | Пошук і завантаження з YouTube | `pipx install yt-dlp` · `brew install yt-dlp` · `winget install yt-dlp` |
-| [FFmpeg](https://ffmpeg.org/) | Конвертація звуку в MP3 | `sudo apt install ffmpeg` · `brew install ffmpeg` · `winget install ffmpeg` |
+| [FFmpeg](https://ffmpeg.org/) | Конвертація звуку в MP3, програми `ffmpeg` і `ffprobe` | `sudo apt install ffmpeg` · `brew install ffmpeg` · `winget install ffmpeg` |
 | [Deno](https://deno.com/) | Середовище JavaScript, без якого yt-dlp не працює з YouTube | `curl -fsSL https://deno.land/install.sh \| sh` · `brew install deno` · `winget install DenoLand.Deno` |
+
+Перед обробкою пісень trackfetch перевіряє, що в `PATH` є і `ffmpeg`, і `ffprobe`, і за відсутності будь-якого з них зупиняється з підказкою щодо встановлення. `--help`, `--version` і `--list-sources` цю перевірку пропускають.
 
 [Pillow](https://python-pillow.org/) (модуль `PIL`) зменшує обкладинки. Під час встановлення через pip/pipx ставиться автоматично, а в готові бінарники вже вбудований, тому окремо додавати його в `PATH` не потрібно.
 
@@ -647,9 +649,9 @@ YouTube часто змінюється. Спершу онови yt-dlp: `pipx u
 </details>
 
 <details>
-<summary><b><code>ERROR: Postprocessing: ffprobe and ffmpeg not found</code></b></summary>
+<summary><b><code>ERROR: ffmpeg and ffprobe were not found</code></b></summary>
 
-Встанови FFmpeg і перевір, що `ffmpeg -version` працює в тому самому терміналі.
+trackfetch перевіряє наявність FFmpeg перед обробкою пісень і зупиняється, якщо його немає. Встанови FFmpeg і перевір, що в тому самому терміналі працюють і `ffmpeg -version`, і `ffprobe -version`.
 
 </details>
 

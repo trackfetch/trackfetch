@@ -54,7 +54,7 @@ macOS and Linux:
 brew install trackfetch/tap/trackfetch
 ```
 
-On macOS the formula installs the prebuilt `trackfetch` binary and a static prebuilt `ffmpeg` inside the formula, so `ffmpeg`, the dependency Homebrew used to build for hours on Intel Macs and newer macOS versions, is never compiled. `yt-dlp` and `deno` come from Homebrew as usual.
+On macOS the formula installs the prebuilt `trackfetch` binary and static prebuilt `ffmpeg` and `ffprobe` inside the formula, so `ffmpeg`, the dependency Homebrew used to build for hours on Intel Macs and newer macOS versions, is never compiled. `yt-dlp` and `deno` come from Homebrew as usual.
 
 ### Nix
 
@@ -106,8 +106,10 @@ With pipx, a standalone binary or a source install, put these on your `PATH`:
 | Tool | Used for | Install |
 | --- | --- | --- |
 | [yt-dlp](https://github.com/yt-dlp/yt-dlp) | Searching and downloading from YouTube | `pipx install yt-dlp` · `brew install yt-dlp` · `winget install yt-dlp` |
-| [FFmpeg](https://ffmpeg.org/) | Converting the audio to MP3 | `sudo apt install ffmpeg` · `brew install ffmpeg` · `winget install ffmpeg` |
+| [FFmpeg](https://ffmpeg.org/) | Converting the audio to MP3, as `ffmpeg` and `ffprobe` | `sudo apt install ffmpeg` · `brew install ffmpeg` · `winget install ffmpeg` |
 | [Deno](https://deno.com/) | JavaScript runtime that yt-dlp needs for YouTube | `curl -fsSL https://deno.land/install.sh \| sh` · `brew install deno` · `winget install DenoLand.Deno` |
+
+Before processing tracks, trackfetch checks that both `ffmpeg` and `ffprobe` are on your `PATH` and stops with an installation hint if either one is missing. `--help`, `--version` and `--list-sources` skip the check.
 
 [Pillow](https://python-pillow.org/) (the `PIL` module) is used to shrink cover art. It is installed automatically with pip/pipx and bundled inside the prebuilt binaries, so you do not need to add it to `PATH`.
 
@@ -701,9 +703,9 @@ YouTube changes often. Update yt-dlp first with `pipx upgrade yt-dlp` or `yt-dlp
 </details>
 
 <details>
-<summary><b><code>ERROR: Postprocessing: ffprobe and ffmpeg not found</code></b></summary>
+<summary><b><code>ERROR: ffmpeg and ffprobe were not found</code></b></summary>
 
-Install FFmpeg and check that `ffmpeg -version` works in the same terminal.
+trackfetch checks for FFmpeg before processing any tracks and stops if it is missing. Install FFmpeg and check that both `ffmpeg -version` and `ffprobe -version` work in the same terminal.
 
 </details>
 

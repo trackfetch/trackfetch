@@ -39,6 +39,7 @@ trackfetch/
 │   ├── reporter.py      Exact per-song progress lines
 │   ├── inputs.py        Input discovery, deduplication and output setup
 │   ├── runner.py        run_songs: download loop, done/failed logs, summary
+│   ├── dependencies.py  Startup check for ffmpeg and ffprobe
 │   ├── sources.py       AudioSource implementations and registry
 │   ├── pipeline.py      One-song orchestration
 │   ├── runtime.py       Health tracking, rate limiter, cache, HTTP session
