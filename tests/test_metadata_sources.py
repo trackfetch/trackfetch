@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 import requests
-from conftest import process_song
 
 import trackfetch as m
+from trackfetch import process_song
 
 
 def make_args(**overrides):
@@ -2318,7 +2318,7 @@ class TestCli:
 
 
 class TestYoutubeFallback:
-    def test_youtube_disabled_prevents_download(self, monkeypatch, tmp_path):
+    def test_youtube_disabled_prevents_download(self, monkeypatch, tmp_path, make_ctx):
         calls = []
         monkeypatch.setattr(
             m.pipeline,
@@ -2328,13 +2328,17 @@ class TestYoutubeFallback:
         config = make_config([], youtube=False, soundcloud=False, none_selected=True)
 
         ok, reason = process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                audio_format="m4a",
+                source_config=config,
+                runtime=make_runtime(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            "m4a",
-            source_config=config,
-            runtime=make_runtime(),
         )
 
         assert (ok, reason) == (False, "no music sources enabled")
@@ -2366,10 +2370,10 @@ class TestYoutubeFallback:
                 },
             )
 
-    def test_none_metadata_still_uses_youtube(self, monkeypatch, tmp_path):
+    def test_none_metadata_still_uses_youtube(self, monkeypatch, tmp_path, make_ctx):
         import shutil
 
-        from conftest import FIXTURES, process_song
+        from conftest import FIXTURES
 
         video = {"title": "A - B", "id": "abc"}
         monkeypatch.setattr(m.pipeline, "find_youtube_video", lambda a, t, d=None: video)
@@ -2402,13 +2406,17 @@ class TestYoutubeFallback:
         runtime = make_runtime(EmptyLyricsSession())
 
         ok, reason = process_song(
-                        "A",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                audio_format="m4a",
+                source_config=config,
+                runtime=runtime,
+                input_artist="A",
+                input_title="B",
+            ),
+            "A",
             "B",
-            tmp_path,
-            False,
-            "m4a",
-            source_config=config,
-            runtime=runtime,
         )
 
         assert (ok, reason) == (True, "downloaded")
@@ -2802,7 +2810,8 @@ class TestCacheBranches:
 
 class TestProcessSongDefaults:
     def test_builds_default_config_when_only_runtime_is_given(
-        self, monkeypatch, tmp_path
+        self, monkeypatch, tmp_path,
+        make_ctx,
     ):
         monkeypatch.setattr(
             m.pipeline,
@@ -2814,13 +2823,17 @@ class TestProcessSongDefaults:
         monkeypatch.setattr(m.pipeline, "find_youtube_video", lambda a, t, d=None: None)
 
         ok, reason = process_song(
-                        "A",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                audio_format="m4a",
+                source_config=None,
+                runtime=make_runtime(),
+                input_artist="A",
+                input_title="B",
+            ),
+            "A",
             "B",
-            tmp_path,
-            False,
-            "m4a",
-            source_config=None,
-            runtime=make_runtime(),
         )
 
         assert (ok, reason) == (False, "no YouTube result")

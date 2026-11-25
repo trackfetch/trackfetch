@@ -96,38 +96,33 @@ def metadata():
         "cover_url": "https://img/cover.jpg",
     }
 
-def process_song(
-    artist,
-    title,
-    output,
-    title_only,
-    audio_format="mp3",
-    audio_quality=None,
-    source_config=None,
-    runtime=None,
-    lyrics_type=None,
-):
-    """Test-side adapter for the new ``process_song(ctx, artist, title)`` API."""
+
+@pytest.fixture
+def make_ctx():
+    """Build a RunContext with test-friendly defaults."""
     import trackfetch
+    from trackfetch.config_pkg.constants import DEFAULT_AUDIO_QUALITY
 
-    if source_config is None:
-        source_config = trackfetch.build_source_config(None, {})
+    def build(**overrides):
+        values = {
+            "output": Path.cwd(),
+            "title_only": False,
+            "audio_format": "mp3",
+            "audio_quality": DEFAULT_AUDIO_QUALITY,
+            "source_config": None,
+            "runtime": None,
+            "lyrics_type": None,
+            "input_artist": "",
+            "input_title": "",
+        }
+        values.update(overrides)
 
-    if audio_quality is None:
-        audio_quality = trackfetch.config_pkg.constants.DEFAULT_AUDIO_QUALITY
+        if values["source_config"] is None:
+            values["source_config"] = trackfetch.build_source_config(None, {})
 
-    if lyrics_type is None:
-        lyrics_type = source_config.lyrics_type
+        if values["lyrics_type"] is None:
+            values["lyrics_type"] = values["source_config"].lyrics_type
 
-    ctx = trackfetch.RunContext(
-        output=output,
-        title_only=title_only,
-        audio_format=audio_format,
-        audio_quality=audio_quality,
-        source_config=source_config,
-        runtime=runtime,
-        lyrics_type=lyrics_type,
-        input_artist=artist,
-        input_title=title,
-    )
-    return trackfetch.process_song(ctx, artist, title)
+        return trackfetch.RunContext(**values)
+
+    return build

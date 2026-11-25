@@ -4,12 +4,13 @@ import sys
 import time
 
 import pytest
-from conftest import FIXTURES, make_track, process_song
+from conftest import FIXTURES, make_track
 from mutagen.id3 import ID3
 from mutagen.mp4 import MP4
 from mutagen.oggopus import OggOpus
 
 import trackfetch as m
+from trackfetch import process_song
 
 
 @pytest.fixture
@@ -71,8 +72,17 @@ def pipeline(monkeypatch):
 
 
 class TestProcessSong:
-    def test_downloads_and_tags(self, pipeline, tmp_path):
-        ok, reason = process_song("daft punk", "one more time", tmp_path, False)
+    def test_downloads_and_tags(self, pipeline, tmp_path, make_ctx):
+        ok, reason = process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="daft punk",
+                input_title="one more time",
+            ),
+            "daft punk",
+            "one more time",
+        )
 
         assert (ok, reason) == (True, "downloaded")
         out = tmp_path / "Daft Punk - One More Time.mp3"
@@ -82,7 +92,7 @@ class TestProcessSong:
         assert tags.getall("APIC")
         assert pipeline["downloaded_urls"] == ["https://www.youtube.com/watch?v=abc"]
 
-    def test_embeds_plain_and_timed_lyrics(self, pipeline, tmp_path, monkeypatch):
+    def test_embeds_plain_and_timed_lyrics(self, pipeline, tmp_path, monkeypatch, make_ctx):
         monkeypatch.setattr(
             m.pipeline,
             "fetch_lyrics",
@@ -93,7 +103,14 @@ class TestProcessSong:
         )
 
         assert process_song(
-            "a", "b", tmp_path, False
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
         ) == (True, "downloaded")
 
         tags = ID3(tmp_path / "Daft Punk - One More Time.mp3")
@@ -104,7 +121,8 @@ class TestProcessSong:
         ]
 
     def test_sidecar_lyrics_type_writes_lrc_next_to_audio(
-        self, pipeline, tmp_path, monkeypatch
+        self, pipeline, tmp_path, monkeypatch,
+        make_ctx,
     ):
         monkeypatch.setattr(
             m.pipeline,
@@ -116,7 +134,15 @@ class TestProcessSong:
         )
 
         assert process_song(
-            "a", "b", tmp_path, False, lyrics_type="sidecar"
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                lyrics_type="sidecar",
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
         ) == (True, "downloaded")
 
         audio = tmp_path / "Daft Punk - One More Time.mp3"
@@ -128,7 +154,8 @@ class TestProcessSong:
         )
 
     def test_plain_lyrics_type_writes_no_lrc(
-        self, pipeline, tmp_path, monkeypatch
+        self, pipeline, tmp_path, monkeypatch,
+        make_ctx,
     ):
         monkeypatch.setattr(
             m.pipeline,
@@ -140,13 +167,22 @@ class TestProcessSong:
         )
 
         assert process_song(
-            "a", "b", tmp_path, False, lyrics_type="plain"
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                lyrics_type="plain",
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
         ) == (True, "downloaded")
 
         assert not (tmp_path / "Daft Punk - One More Time.lrc").exists()
 
     def test_duration_is_forwarded_to_youtube_and_lyrics(
-        self, pipeline, tmp_path, monkeypatch
+        self, pipeline, tmp_path, monkeypatch,
+        make_ctx,
     ):
         calls = []
 
@@ -168,16 +204,20 @@ class TestProcessSong:
         monkeypatch.setattr(m.pipeline, "fetch_lyrics", find_lyrics)
 
         assert process_song(
-                        "a",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=m.build_source_config(None, {}),
+                runtime=m.MetadataRuntime(),
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
             "b",
-            tmp_path,
-            False,
-            source_config=m.build_source_config(None, {}),
-            runtime=m.MetadataRuntime(),
         ) == (True, "downloaded")
         assert calls == [("video", 321), ("lyrics", 321)]
 
-    def test_synced_lyrics_status_message(self, pipeline, tmp_path, capsys, monkeypatch):
+    def test_synced_lyrics_status_message(self, pipeline, tmp_path, capsys, monkeypatch, make_ctx):
         monkeypatch.setattr(
             m.pipeline,
             "fetch_lyrics",
@@ -188,11 +228,20 @@ class TestProcessSong:
         )
 
         assert process_song(
-            "a", "b", tmp_path, False
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
         ) == (True, "downloaded")
         assert "Lyrics: synced (embedded)" in capsys.readouterr().out
 
-    def test_plain_only_lyrics_status_message(self, pipeline, tmp_path, capsys, monkeypatch):
+    def test_plain_only_lyrics_status_message(
+        self, pipeline, tmp_path, capsys, monkeypatch, make_ctx
+    ):
         monkeypatch.setattr(
             m.pipeline,
             "fetch_lyrics",
@@ -200,7 +249,14 @@ class TestProcessSong:
         )
 
         assert process_song(
-            "a", "b", tmp_path, False
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
         ) == (True, "downloaded")
         assert (
             "Lyrics: plain only (no synced version)"
@@ -208,10 +264,18 @@ class TestProcessSong:
         )
 
     def test_missing_lyrics_does_not_fail_download(
-        self, pipeline, tmp_path, capsys
+        self, pipeline, tmp_path, capsys,
+        make_ctx,
     ):
         assert process_song(
-            "a", "b", tmp_path, False
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
         ) == (True, "downloaded")
 
         tags = ID3(tmp_path / "Daft Punk - One More Time.mp3")
@@ -219,7 +283,7 @@ class TestProcessSong:
         assert not tags.getall("SYLT")
         assert "Lyrics: not found" in capsys.readouterr().out
 
-    def test_disabled_lyrics_are_not_fetched(self, pipeline, tmp_path, monkeypatch):
+    def test_disabled_lyrics_are_not_fetched(self, pipeline, tmp_path, monkeypatch, make_ctx):
         def boom(*args, **kwargs):
             raise AssertionError("lyrics must not be fetched")
 
@@ -237,24 +301,38 @@ class TestProcessSong:
         )
 
         assert process_song(
-                        "a",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                audio_format="mp3",
+                source_config=config,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
             "b",
-            tmp_path,
-            False,
-            "mp3",
-            source_config=config,
         ) == (True, "downloaded")
         assert not ID3(tmp_path / "Daft Punk - One More Time.mp3").getall("USLT")
 
 
-    def test_opus(self, pipeline, tmp_path):
-        assert process_song("a", "b", tmp_path, False, "opus") == (True, "downloaded")
+    def test_opus(self, pipeline, tmp_path, make_ctx):
+        assert process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                audio_format="opus",
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
+        ) == (True, "downloaded")
         tags = OggOpus(tmp_path / "Daft Punk - One More Time.opus")
         assert tags["TITLE"] == ["One More Time"]
         assert tags["METADATA_BLOCK_PICTURE"]
         assert pipeline["formats"] == ["opus"]
 
-    def test_opus_embeds_lyrics(self, pipeline, tmp_path, monkeypatch):
+    def test_opus_embeds_lyrics(self, pipeline, tmp_path, monkeypatch, make_ctx):
         monkeypatch.setattr(
             m.pipeline,
             "fetch_lyrics",
@@ -264,13 +342,23 @@ class TestProcessSong:
             },
         )
 
-        assert process_song("a", "b", tmp_path, False, "opus") == (True, "downloaded")
+        assert process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                audio_format="opus",
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
+        ) == (True, "downloaded")
 
         tags = OggOpus(tmp_path / "Daft Punk - One More Time.opus")
         assert tags["LYRICS"] == ["[00:01.00]Words"]
         assert tags["SYNCEDLYRICS"] == ["[00:01.00]Words"]
 
-    def test_m4a_embeds_lyrics(self, pipeline, tmp_path, monkeypatch):
+    def test_m4a_embeds_lyrics(self, pipeline, tmp_path, monkeypatch, make_ctx):
         monkeypatch.setattr(
             m.pipeline,
             "fetch_lyrics",
@@ -280,46 +368,121 @@ class TestProcessSong:
             },
         )
 
-        assert process_song("a", "b", tmp_path, False, "m4a") == (True, "downloaded")
+        assert process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                audio_format="m4a",
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
+        ) == (True, "downloaded")
 
         tags = MP4(tmp_path / "Daft Punk - One More Time.m4a")
         assert tags["\xa9lyr"] == ["[00:01.00]Words"]
         assert bytes(tags[m.M4A_SYNCED_LYRICS_KEY][0]).decode("utf-8") == "[00:01.00]Words"
 
-    def test_m4a(self, pipeline, tmp_path):
-        assert process_song("a", "b", tmp_path, False, "m4a") == (True, "downloaded")
+    def test_m4a(self, pipeline, tmp_path, make_ctx):
+        assert process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                audio_format="m4a",
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
+        ) == (True, "downloaded")
         tags = MP4(tmp_path / "Daft Punk - One More Time.m4a")
         assert tags["\xa9alb"] == ["Discovery"]
         assert tags["covr"]
 
-    def test_existing_file_check_uses_format_extension(self, pipeline, tmp_path):
+    def test_existing_file_check_uses_format_extension(self, pipeline, tmp_path, make_ctx):
         (tmp_path / "Daft Punk - One More Time.mp3").write_bytes(b"")
-        assert process_song("a", "b", tmp_path, False, "opus") == (True, "downloaded")
+        assert process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                audio_format="opus",
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
+        ) == (True, "downloaded")
 
-    def test_title_only(self, pipeline, tmp_path):
-        process_song("a", "b", tmp_path, True)
+    def test_title_only(self, pipeline, tmp_path, make_ctx):
+        process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=True,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
+        )
         assert (tmp_path / "One More Time.mp3").exists()
 
-    def test_skips_existing_file(self, pipeline, tmp_path):
+    def test_skips_existing_file(self, pipeline, tmp_path, make_ctx):
         (tmp_path / "Daft Punk - One More Time.mp3").write_bytes(b"")
-        assert process_song("a", "b", tmp_path, False) == (True, "exists")
+        assert process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
+        ) == (True, "exists")
         assert pipeline["downloaded_urls"] == []
 
-    def test_uses_input_when_spotify_has_no_match(self, pipeline, tmp_path):
+    def test_uses_input_when_spotify_has_no_match(self, pipeline, tmp_path, make_ctx):
         pipeline["track"] = None
-        assert process_song("Unknown", "Demo", tmp_path, False)[0]
+        assert process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="Unknown",
+                input_title="Demo",
+            ),
+            "Unknown",
+            "Demo",
+        )[0]
         assert ID3(tmp_path / "Unknown - Demo.mp3")["TPE1"].text == ["Unknown"]
 
-    def test_prefers_webpage_url(self, pipeline, tmp_path):
+    def test_prefers_webpage_url(self, pipeline, tmp_path, make_ctx):
         pipeline["video"] = {"webpage_url": "https://w", "url": "https://u", "id": "i"}
-        process_song("a", "b", tmp_path, False)
+        process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
+        )
         assert pipeline["downloaded_urls"] == ["https://w"]
 
-    def test_no_youtube_result(self, pipeline, tmp_path):
+    def test_no_youtube_result(self, pipeline, tmp_path, make_ctx):
         pipeline["video"] = None
-        assert process_song("a", "b", tmp_path, False) == (False, "no YouTube result")
+        assert process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
+        ) == (False, "no YouTube result")
 
-    def test_no_confident_youtube_match(self, pipeline, tmp_path, monkeypatch):
+    def test_no_confident_youtube_match(self, pipeline, tmp_path, monkeypatch, make_ctx):
         def no_match(artist, title, duration=None):
             m.youtube.LAST_SEARCH_HAD_CANDIDATES = True
             return None
@@ -327,21 +490,36 @@ class TestProcessSong:
         monkeypatch.setattr(m.pipeline, "find_youtube_video", no_match)
 
         assert process_song(
-            "a", "b", tmp_path, False
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
         ) == (False, "no confident YouTube match")
 
-    def test_ytdlp_search_failure(self, pipeline, tmp_path, monkeypatch):
+    def test_ytdlp_search_failure(self, pipeline, tmp_path, monkeypatch, make_ctx):
         def search_failed(artist, title, duration=None):
             raise m.youtube.YoutubeSearchError("boom")
 
         monkeypatch.setattr(m.pipeline, "find_youtube_video", search_failed)
 
         assert process_song(
-            "a", "b", tmp_path, False
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
         ) == (False, "yt-dlp search failed")
 
     def test_music_fallback_with_no_match_is_not_a_result(
-        self, pipeline, tmp_path, monkeypatch
+        self, pipeline, tmp_path, monkeypatch,
+        make_ctx,
     ):
         monkeypatch.setattr(m.pipeline, "find_youtube_video", m.youtube.find_youtube_video)
         monkeypatch.setattr(
@@ -367,26 +545,61 @@ class TestProcessSong:
         )
 
         assert process_song(
-            "a", "b", tmp_path, False
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
         ) == (False, "no confident YouTube match")
 
-    def test_invalid_youtube_result(self, pipeline, tmp_path):
+    def test_invalid_youtube_result(self, pipeline, tmp_path, make_ctx):
         pipeline["video"] = {"title": "no id"}
-        assert process_song("a", "b", tmp_path, False) == (False, "invalid YouTube result")
+        assert process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
+        ) == (False, "invalid YouTube result")
 
-    def test_download_failure(self, pipeline, tmp_path):
+    def test_download_failure(self, pipeline, tmp_path, make_ctx):
         pipeline["download_ok"] = False
-        assert process_song("a", "b", tmp_path, False) == (False, "yt-dlp download failed")
+        assert process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
+        ) == (False, "yt-dlp download failed")
         assert not list(tmp_path.glob("*.mp3"))
 
-    def test_cover_failure_is_not_fatal(self, pipeline, tmp_path, capsys):
+    def test_cover_failure_is_not_fatal(self, pipeline, tmp_path, capsys, make_ctx):
         pipeline["cover_ok"] = False
-        assert process_song("a", "b", tmp_path, False) == (True, "downloaded")
+        assert process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
+        ) == (True, "downloaded")
         assert not ID3(tmp_path / "Daft Punk - One More Time.mp3").getall("APIC")
         assert "cover download failed" in capsys.readouterr().out
 
     def test_lrc_sidecar_error_is_not_fatal(
-        self, pipeline, tmp_path, monkeypatch, capsys
+        self, pipeline, tmp_path, monkeypatch, capsys,
+        make_ctx,
     ):
         def boom(*args):
             raise OSError("read-only")
@@ -394,24 +607,49 @@ class TestProcessSong:
         monkeypatch.setattr(m.pipeline, "write_lrc_sidecar", boom)
 
         assert process_song(
-            "a", "b", tmp_path, False
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
         ) == (True, "downloaded")
         assert "could not write LRC file" in capsys.readouterr().out
 
-    def test_metadata_error(self, pipeline, tmp_path, monkeypatch):
+    def test_metadata_error(self, pipeline, tmp_path, monkeypatch, make_ctx):
         class BrokenTagger:
             def tag(self, *args):
                 raise ValueError("bad tag")
 
         monkeypatch.setattr(m.pipeline, "get_tagger", lambda fmt: BrokenTagger())
-        assert process_song("a", "b", tmp_path, False) == (False, "metadata error: bad tag")
+        assert process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
+        ) == (False, "metadata error: bad tag")
 
-    def test_move_error(self, pipeline, tmp_path, monkeypatch):
+    def test_move_error(self, pipeline, tmp_path, monkeypatch, make_ctx):
         def boom(src, dst):
             raise OSError("disk full")
 
         monkeypatch.setattr(shutil, "move", boom)
-        assert process_song("a", "b", tmp_path, False) == (False, "move error: disk full")
+        assert process_song(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                input_artist="a",
+                input_title="b",
+            ),
+            "a",
+            "b",
+        ) == (False, "move error: disk full")
 
 
 def run_cli(monkeypatch, *args):
@@ -727,7 +965,8 @@ class TestSoundcloudFallbackIntegration:
         )
 
     def test_age_restriction_downloads_the_soundcloud_copy(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         state = self.prepare(pipeline, monkeypatch, True)
         monkeypatch.setattr(
@@ -747,11 +986,15 @@ class TestSoundcloudFallbackIntegration:
         )
 
         ok, reason = process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         )
 
         assert (ok, reason) == (True, "downloaded")
@@ -762,7 +1005,8 @@ class TestSoundcloudFallbackIntegration:
         assert (tmp_path / "Daft Punk - One More Time.mp3").exists()
 
     def test_non_age_error_never_searches_soundcloud(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.prepare(pipeline, monkeypatch, False)
 
@@ -772,15 +1016,20 @@ class TestSoundcloudFallbackIntegration:
         monkeypatch.setattr(m.pipeline.soundcloud, "soundcloud_search", boom)
 
         assert process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         ) == (False, "yt-dlp download failed")
 
     def test_network_error_never_searches_soundcloud(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.prepare(pipeline, monkeypatch, False)
         monkeypatch.setattr(
@@ -790,15 +1039,20 @@ class TestSoundcloudFallbackIntegration:
         )
 
         assert process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         ) == (False, "yt-dlp download failed")
 
     def test_private_video_never_searches_soundcloud(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.prepare(pipeline, monkeypatch, False)
         monkeypatch.setattr(
@@ -808,15 +1062,20 @@ class TestSoundcloudFallbackIntegration:
         )
 
         assert process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         )[0] is False
 
     def test_disabled_fallback_keeps_the_original_reason(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.prepare(pipeline, monkeypatch, True)
         monkeypatch.setattr(
@@ -826,15 +1085,20 @@ class TestSoundcloudFallbackIntegration:
         )
 
         assert process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(soundcloud_enabled=False),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(soundcloud_enabled=False),
         ) == (False, "yt-dlp download failed")
 
     def test_preview_candidate_is_not_downloaded(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         state = self.prepare(pipeline, monkeypatch, True)
         monkeypatch.setattr(
@@ -844,11 +1108,15 @@ class TestSoundcloudFallbackIntegration:
         )
 
         ok, reason = process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         )
 
         assert ok is False
@@ -856,7 +1124,8 @@ class TestSoundcloudFallbackIntegration:
         assert len(state["urls"]) == 1
 
     def test_no_match_does_not_download(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         state = self.prepare(pipeline, monkeypatch, True)
         monkeypatch.setattr(
@@ -866,11 +1135,15 @@ class TestSoundcloudFallbackIntegration:
         )
 
         ok, reason = process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         )
 
         assert ok is False
@@ -878,7 +1151,8 @@ class TestSoundcloudFallbackIntegration:
         assert len(state["urls"]) == 1
 
     def test_soundcloud_download_failure_is_reported(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.prepare(pipeline, monkeypatch, True)
         # Both the YouTube and the SoundCloud download fail.
@@ -899,17 +1173,22 @@ class TestSoundcloudFallbackIntegration:
         )
 
         ok, reason = process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         )
 
         assert (ok, reason) == (False, "yt-dlp download failed")
 
     def test_fallback_runs_only_once_per_song(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         m.soundcloud.reset_attempts()
         calls = []
@@ -936,16 +1215,33 @@ class TestSoundcloudFallbackIntegration:
 
         config = self.config()
         process_song(
-            "Daft Punk", "One More Time", tmp_path, False, source_config=config
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=config,
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
+            "One More Time",
         )
         process_song(
-            "Daft Punk", "One More Time", tmp_path, False, source_config=config
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=config,
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
+            "One More Time",
         )
 
         assert len(calls) == 1
 
     def test_soundcloud_artwork_fills_missing_cover(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         from mutagen.id3 import ID3
 
@@ -984,11 +1280,15 @@ class TestSoundcloudFallbackIntegration:
         )
 
         assert process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         ) == (True, "downloaded")
 
         # The provider had no artwork in this pipeline fixture, so the largest
@@ -998,7 +1298,8 @@ class TestSoundcloudFallbackIntegration:
         assert ID3(tmp_path / "Daft Punk - One More Time.mp3").getall("APIC")
 
     def test_candidate_blocked_after_verification_is_not_downloaded(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         state = self.prepare(pipeline, monkeypatch, True)
         monkeypatch.setattr(
@@ -1013,11 +1314,15 @@ class TestSoundcloudFallbackIntegration:
         )
 
         ok, reason = process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         )
 
         assert ok is False
@@ -1025,7 +1330,8 @@ class TestSoundcloudFallbackIntegration:
         assert len(state["urls"]) == 1
 
     def test_soundcloud_thumbnail_is_used_without_a_thumbnail_list(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         from mutagen.id3 import ID3
 
@@ -1059,17 +1365,22 @@ class TestSoundcloudFallbackIntegration:
         )
 
         assert process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         ) == (True, "downloaded")
         assert seen == ["https://i1.sndcdn.com/only.jpg"]
         assert ID3(tmp_path / "Daft Punk - One More Time.mp3").getall("APIC")
 
     def test_invalid_soundcloud_result_is_reported(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.prepare(pipeline, monkeypatch, True)
 
@@ -1094,17 +1405,22 @@ class TestSoundcloudFallbackIntegration:
         )
 
         ok, reason = process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         )
 
         assert ok is False
 
     def test_preview_found_only_in_details_is_rejected(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         state = self.prepare(pipeline, monkeypatch, True)
         monkeypatch.setattr(
@@ -1120,11 +1436,15 @@ class TestSoundcloudFallbackIntegration:
         )
 
         ok, reason = process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         )
 
         assert ok is False
@@ -1179,7 +1499,8 @@ class TestSoundcloudTrigger:
         )
 
     def test_default_trigger_does_not_run_on_missing_match(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.setup_soundcloud(monkeypatch)
         monkeypatch.setattr(
@@ -1189,15 +1510,20 @@ class TestSoundcloudTrigger:
         )
 
         assert process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         ) == (False, "no YouTube result")
 
     def test_age_or_missing_runs_on_no_youtube_result(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.setup_soundcloud(monkeypatch)
         monkeypatch.setattr(
@@ -1219,18 +1545,23 @@ class TestSoundcloudTrigger:
         )
 
         ok, reason = process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(soundcloud_trigger="age-or-missing"),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(soundcloud_trigger="age-or-missing"),
         )
 
         assert (ok, reason) == (True, "downloaded")
         assert (tmp_path / "Daft Punk - One More Time.mp3").exists()
 
     def test_age_or_missing_does_not_run_on_network_error(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.setup_soundcloud(monkeypatch)
         monkeypatch.setattr(
@@ -1245,15 +1576,20 @@ class TestSoundcloudTrigger:
         monkeypatch.setattr(m.pipeline, "find_youtube_video", failing_search)
 
         assert process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(soundcloud_trigger="age-or-missing"),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(soundcloud_trigger="age-or-missing"),
         ) == (False, "yt-dlp search failed")
 
     def test_any_trigger_runs_on_download_failure(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.setup_soundcloud(monkeypatch)
         calls = {"n": 0}
@@ -1276,18 +1612,23 @@ class TestSoundcloudTrigger:
         )
 
         ok, _reason = process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(soundcloud_trigger="any"),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(soundcloud_trigger="any"),
         )
 
         assert ok is True
         assert calls["n"] == 2
 
     def test_alone_any_trigger_keeps_the_default_off(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.setup_soundcloud(monkeypatch)
         monkeypatch.setattr(
@@ -1307,15 +1648,20 @@ class TestSoundcloudTrigger:
         )
 
         assert process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         ) == (False, "yt-dlp download failed")
 
     def test_soundcloud_disabled_overrides_any_trigger(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.setup_soundcloud(monkeypatch)
         monkeypatch.setattr(
@@ -1330,18 +1676,23 @@ class TestSoundcloudTrigger:
         )
 
         assert process_song(
-                        "Daft Punk",
-            "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(
                 soundcloud_enabled=False,
                 soundcloud_trigger="any",
             ),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
+            "One More Time",
         ) == (False, "no YouTube result")
 
     def test_blocked_trigger_runs_on_a_bot_wall(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         """A login/bot wall is not an age restriction, but it is a block."""
         self.setup_soundcloud(monkeypatch)
@@ -1368,18 +1719,23 @@ class TestSoundcloudTrigger:
         )
 
         ok, _reason = process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(soundcloud_trigger="blocked"),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(soundcloud_trigger="blocked"),
         )
 
         assert ok is True
         assert calls["n"] == 2
 
     def test_blocked_trigger_still_ignores_plain_download_errors(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.setup_soundcloud(monkeypatch)
         monkeypatch.setattr(
@@ -1400,15 +1756,20 @@ class TestSoundcloudTrigger:
         )
 
         assert process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(soundcloud_trigger="blocked"),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(soundcloud_trigger="blocked"),
         ) == (False, "yt-dlp download failed")
 
     def test_age_trigger_ignores_a_bot_wall(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         """The default stays strict: only age restrictions count."""
         self.setup_soundcloud(monkeypatch)
@@ -1432,11 +1793,15 @@ class TestSoundcloudTrigger:
         )
 
         assert process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         ) == (False, "yt-dlp download failed")
 
 
@@ -1485,7 +1850,8 @@ class TestMusicPriority:
         )
 
     def test_soundcloud_primary_downloads_without_youtube(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.setup_soundcloud(monkeypatch)
         monkeypatch.setattr(
@@ -1495,11 +1861,15 @@ class TestMusicPriority:
         )
 
         ok, reason = process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(music_sources="soundcloud,youtube"),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(music_sources="soundcloud,youtube"),
         )
 
         assert (ok, reason) == (True, "downloaded")
@@ -1508,16 +1878,21 @@ class TestMusicPriority:
         ]
 
     def test_soundcloud_primary_falls_back_to_youtube(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.setup_soundcloud(monkeypatch, results=[])
 
         ok, reason = process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(music_sources="soundcloud,youtube"),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(music_sources="soundcloud,youtube"),
         )
 
         assert (ok, reason) == (True, "downloaded")
@@ -1526,7 +1901,8 @@ class TestMusicPriority:
         ]
 
     def test_soundcloud_only_never_tries_youtube(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.setup_soundcloud(monkeypatch, results=[])
         monkeypatch.setattr(
@@ -1536,17 +1912,22 @@ class TestMusicPriority:
         )
 
         ok, reason = process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(music_sources="soundcloud"),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(music_sources="soundcloud"),
         )
 
         assert (ok, reason) == (False, "no SoundCloud match")
 
     def test_youtube_only_never_tries_soundcloud_on_age_restriction(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         monkeypatch.setattr(
             m.pipeline.soundcloud,
@@ -1568,15 +1949,20 @@ class TestMusicPriority:
         )
 
         assert process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(music_sources="youtube"),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(music_sources="youtube"),
         ) == (False, "yt-dlp download failed")
 
     def test_default_priority_keeps_youtube_first_and_falls_back(
-        self, pipeline, monkeypatch, tmp_path
+        self, pipeline, monkeypatch, tmp_path,
+        make_ctx,
     ):
         self.setup_soundcloud(monkeypatch)
 
@@ -1595,11 +1981,15 @@ class TestMusicPriority:
         monkeypatch.setattr(m.pipeline, "download_audio", fake_download)
 
         ok, reason = process_song(
-                        "Daft Punk",
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
             "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(),
         )
 
         assert (ok, reason) == (True, "downloaded")
@@ -1663,6 +2053,7 @@ class TestSourceOrderAndTriggers:
         order,
         trigger,
         youtube_error,
+        make_ctx,
     ):
         from trackfetch import soundcloud
 
@@ -1699,14 +2090,18 @@ class TestSourceOrderAndTriggers:
         monkeypatch.setattr(m.pipeline, "download_audio", fake_download)
 
         ok, reason = process_song(
-            "Daft Punk",
-            "One More Time",
-            tmp_path,
-            False,
-            source_config=self.config(
+            make_ctx(
+                output=tmp_path,
+                title_only=False,
+                source_config=self.config(
                 music_sources=order,
                 soundcloud_trigger=trigger,
             ),
+                input_artist="Daft Punk",
+                input_title="One More Time",
+            ),
+            "Daft Punk",
+            "One More Time",
         )
 
         assert (ok, reason) == (True, "downloaded")
