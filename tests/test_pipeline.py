@@ -958,7 +958,7 @@ class TestSoundcloudFallbackIntegration:
         monkeypatch.setattr(m.pipeline, "resolve_metadata", no_artwork)
         cover_urls = []
 
-        def fake_cover(metadata_arg, video, dest, youtube_enabled):
+        def fake_cover(metadata_arg, dest, fallback_urls=()):
             cover_urls.append(metadata_arg.get("cover_url"))
             dest.write_bytes(b"\xff\xd8\xff\xe0jpeg")
             return dest
@@ -1038,7 +1038,7 @@ class TestSoundcloudFallbackIntegration:
         monkeypatch.setattr(m.pipeline, "resolve_metadata", no_artwork)
         seen = []
 
-        def fake_cover(metadata_arg, video, dest, youtube_enabled):
+        def fake_cover(metadata_arg, dest, fallback_urls=()):
             seen.append(metadata_arg.get("cover_url"))
             dest.write_bytes(b"\xff\xd8\xff\xe0jpeg")
             return dest

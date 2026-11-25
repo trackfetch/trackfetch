@@ -9,7 +9,6 @@ import requests
 from .. import colors
 from ..constants import MAX_COVER_BYTES, MAX_COVER_SIZE, USER_AGENT
 from ..errors import CoverError
-from ..youtube import youtube_thumbnail_urls
 
 IMAGE_FORMATS = {
     "jpeg": ("image/jpeg", ".jpg"),
@@ -141,8 +140,8 @@ def download_cover(url: str, destination: Path):
 
     return format_name
 
-def download_best_cover(metadata, video, cover_path, youtube_enabled):
-    """Download provider artwork, then fall back to a YouTube thumbnail.
+def download_best_cover(metadata, cover_path, fallback_urls=()):
+    """Download provider artwork, then fall back to generic image URLs.
 
     Returns the path of the saved image with an extension that matches the
     actual image signature, or None when no usable image was downloaded.
@@ -154,9 +153,8 @@ def download_best_cover(metadata, video, cover_path, youtube_enabled):
             (metadata["cover_url"], metadata.get("source") or "metadata")
         )
 
-    if youtube_enabled:
-        for url in youtube_thumbnail_urls(video):
-            candidates.append((url, "YouTube"))
+    for url in fallback_urls:
+        candidates.append((url, "YouTube"))
 
     last_error = None
     cover_path = Path(cover_path)

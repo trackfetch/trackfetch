@@ -33,6 +33,7 @@ from ..youtube import (
     is_age_restriction_error,
     is_bot_check_error,
     probe_age_restriction,
+    youtube_thumbnail_urls,
 )
 
 _report = Reporter()
@@ -124,9 +125,10 @@ def _download_and_tag(metadata, video, video_url, ctx: RunContext,
 
         cover_path = download_best_cover(
             metadata,
-            video,
             temp_dir / "cover",
-            youtube_enabled,
+            fallback_urls=(
+                youtube_thumbnail_urls(video) if youtube_enabled else []
+            ),
         )
 
         if cover_path is None:

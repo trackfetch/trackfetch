@@ -119,6 +119,7 @@ from .errors import (
     TrackFetchError,
     YoutubeSearchError,
 )
+from .protocols import AudioSource, Tagger
 from .scoring import (
     DEFAULT_LYRICS_SCORING,
     DEFAULT_METADATA_SCORING,
@@ -330,6 +331,8 @@ __all__ = [
     "RunContext",
     "Result",
     "Reporter",
+    "AudioSource",
+    "Tagger",
     "SourceConfig",
     "SoundcloudError",
     "THEMES_FILENAME",

@@ -2166,9 +2166,7 @@ class TestArtwork:
 
         path = m.download_best_cover(
             metadata,
-            None,
             tmp_path / "cover",
-            False,
         )
 
         assert path == tmp_path / f"cover{extension}"
@@ -2207,9 +2205,8 @@ class TestArtwork:
 
         path = m.download_best_cover(
             metadata,
-            video,
             tmp_path / "cover",
-            True,
+            fallback_urls=m.youtube_thumbnail_urls(video),
         )
 
         assert path == tmp_path / "cover.png"
