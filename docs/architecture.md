@@ -1,5 +1,7 @@
 # Architecture
 
+[![Architecture diagram of trackfetch/trackfetch](https://gitdiagram.com/trackfetch/trackfetch/diagram.png)](https://gitdiagram.com/trackfetch/trackfetch?utm_source=readme&utm_medium=picture)
+
 TrackFetch used to be one `trackfetch.py` module. It is now a small package
 with one responsibility per module. The public API is still available from
 `import trackfetch`, so the console script and existing integrations keep

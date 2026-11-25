@@ -10,6 +10,7 @@
   <a href="#install"><img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-FFB547?style=flat-square&labelColor=15122B"></a>
   <a href="#standalone-binary"><img alt="Linux, macOS and Windows on x86_64 and ARM64" src="https://img.shields.io/badge/linux%20%C2%B7%20macos%20%C2%B7%20windows-x86__64%20%2B%20arm64-FFB547?style=flat-square&labelColor=15122B"></a>
   <a href="https://github.com/trackfetch/trackfetch/blob/master/LICENSE"><img alt="License: GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-FFB547?style=flat-square&labelColor=15122B"></a>
+  <a href="https://gitdiagram.com/trackfetch/trackfetch?utm_source=readme&utm_medium=badge"><img alt="Architecture diagram" src="https://gitdiagram.com/diagram-badge.svg"></a>
 </p>
 
 <p align="center">
@@ -647,6 +648,15 @@ the flag only makes trackfetch stop producing it.
 A [tldr](https://tldr.sh/) page is in [`docs/tldr/trackfetch.md`](https://github.com/trackfetch/trackfetch/blob/master/docs/tldr/trackfetch.md). To use it with [tealdeer](https://github.com/tealdeer-rs/tealdeer), copy it into your custom pages folder as `trackfetch.page.md`.
 
 ## How it works
+
+<details>
+<summary>Architecture diagram</summary>
+
+[![Architecture diagram of trackfetch/trackfetch](https://gitdiagram.com/trackfetch/trackfetch/diagram.png)](https://gitdiagram.com/trackfetch/trackfetch?utm_source=readme&utm_medium=picture)
+
+Open it on [GitDiagram](https://gitdiagram.com/trackfetch/trackfetch?utm_source=readme&utm_medium=picture) to explore the modules interactively. See [`docs/architecture.md`](docs/architecture.md) for the module map in text.
+
+</details>
 
 1. **Find the metadata.** trackfetch queries the configured providers in priority order. Every result is scored by fuzzy similarity, 70% title and 30% artist. Both the overall `match_threshold` and the `title_threshold` must pass, so an unrelated result is rejected instead of being used. If every query misses, provider searches are retried with looser phrasing, and the configured providers are followed by the `deezer` and `musicbrainz` fallbacks. The winning result supplies the title, artists, album details, release date, duration and artwork.
 2. **Find the audio.** With the default `music_sources = youtube,soundcloud`, it searches YouTube first and scores the top five results:

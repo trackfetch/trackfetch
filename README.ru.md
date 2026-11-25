@@ -10,6 +10,7 @@
   <a href="#установка"><img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-FFB547?style=flat-square&labelColor=15122B"></a>
   <a href="#готовый-бинарник"><img alt="Linux, macOS и Windows на x86_64 и ARM64" src="https://img.shields.io/badge/linux%20%C2%B7%20macos%20%C2%B7%20windows-x86__64%20%2B%20arm64-FFB547?style=flat-square&labelColor=15122B"></a>
   <a href="LICENSE"><img alt="Лицензия: GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-FFB547?style=flat-square&labelColor=15122B"></a>
+  <a href="https://gitdiagram.com/trackfetch/trackfetch?utm_source=readme&utm_medium=badge"><img alt="Схема архитектуры" src="https://gitdiagram.com/diagram-badge.svg"></a>
 </p>
 
 <p align="center">
@@ -595,6 +596,15 @@ trackfetch retry.txt
 Страница для [tldr](https://tldr.sh/) лежит в [`docs/tldr/trackfetch.md`](docs/tldr/trackfetch.md). Чтобы пользоваться ей в [tealdeer](https://github.com/tealdeer-rs/tealdeer), скопируй её в папку пользовательских страниц под именем `trackfetch.page.md`.
 
 ## Как это работает
+
+<details>
+<summary>Схема архитектуры</summary>
+
+[![Схема архитектуры trackfetch/trackfetch](https://gitdiagram.com/trackfetch/trackfetch/diagram.png)](https://gitdiagram.com/trackfetch/trackfetch?utm_source=readme&utm_medium=picture)
+
+Открой её на [GitDiagram](https://gitdiagram.com/trackfetch/trackfetch?utm_source=readme&utm_medium=picture), чтобы изучить модули интерактивно. Текстовую карту модулей см. в [`docs/architecture.md`](docs/architecture.md).
+
+</details>
 
 1. **Поиск метаданных.** trackfetch опрашивает настроенные источники по приоритету. Каждый результат оценивается по нечёткому сходству: 70% даёт название, 30% исполнитель. Нужно пройти и общий `match_threshold`, и `title_threshold`, поэтому неподходящий результат отклоняется. Если все запросы ничего не нашли, поиск повторяется с более слабой формулировкой, а после настроенных источников пробуются запасные `deezer` и `musicbrainz`. Победитель даёт название, исполнителей, альбом, дату выхода, длительность и обложку.
 2. **Поиск аудио на YouTube.** trackfetch ищет на YouTube официальные исполнителя и название и оценивает первые пять результатов:
