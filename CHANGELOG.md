@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-11-26
+
 ### Added
 - Startup checks for `ffmpeg` and `ffprobe`: a missing tool stops the run with
   exit code 1, names what was not found on stderr and prints an installation
@@ -306,7 +308,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - PyInstaller spec, plus prebuilt binaries for Linux, macOS and Windows on x86_64 and ARM64.
 - Automated releases: pushing a new version to `master` builds and publishes all binaries.
 
-[Unreleased]: https://github.com/trackfetch/trackfetch/compare/v2.3.4...HEAD
+[Unreleased]: https://github.com/trackfetch/trackfetch/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/trackfetch/trackfetch/compare/v2.3.4...v2.4.0
 [2.3.4]: https://github.com/trackfetch/trackfetch/compare/v2.3.3...v2.3.4
 [2.3.3]: https://github.com/trackfetch/trackfetch/releases/tag/v2.3.3
 [2.3.2]: https://github.com/trackfetch/trackfetch/releases/tag/v2.3.2
