@@ -6,8 +6,8 @@ import configparser
 import os
 from pathlib import Path
 
-from ..config import config_str_value, parse_bool
 from ..config_pkg.constants import CONFIG_ENV, CONFIG_FILENAME, CONFIG_SECTION
+from .config import config_str_value, parse_bool
 
 
 def config_candidates():

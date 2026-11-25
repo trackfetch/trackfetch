@@ -8,8 +8,8 @@ from mutagen.flac import Picture
 from mutagen.oggopus import OggOpus
 
 from ..config_pkg.constants import DEFAULT_LYRICS_TYPE
-from ..images import image_mime_type
-from ..lyrics import add_opus_lyrics
+from ..core.images import image_mime_type
+from ..metadata.lyrics import add_opus_lyrics
 
 
 def _cover_value(cover_path):

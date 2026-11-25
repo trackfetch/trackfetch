@@ -21,7 +21,7 @@ import argparse
 import re
 import textwrap
 
-from .. import colors
+from . import colors
 
 HELP_POSITION = 30
 

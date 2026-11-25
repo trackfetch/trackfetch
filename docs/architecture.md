@@ -7,41 +7,54 @@ working.
 
 ## Module map
 
-The package is organized in layers. Old module paths
-(`trackfetch.youtube`, `trackfetch.config`, ...) still import through
-thin shim modules, so existing integrations keep working.
+The package is organized in layers. Old top-level module paths were removed;
+import the focused module directly or use the public facade (`import
+trackfetch`), which re-exports the documented names.
 
 ```
 trackfetch/
 ├── __init__.py          Public facade and re-exports
 ├── __main__.py          python -m trackfetch
-├── constants.py         Shim -> config_pkg.constants
+├── _lazy.py             Lazy name/submodule maps for the facade
+├── cli.py               Parser composition, help setup and entry point
+├── cli_options.py       Argument groups and option definitions
 ├── errors.py            TrackFetchError hierarchy (config, tagging, cover)
 ├── enums.py             AudioFormat / MusicSource str-enums
 ├── protocols.py         AudioSource / Tagger runtime-checkable protocols
 ├── scoring.py           Frozen dataclasses for candidate scoring
 ├── audio/
-│   ├── youtube.py       Search, scoring, age-restriction probe, audio download
-│   └── soundcloud.py    SoundCloud fallback search, matching and selection
+│   ├── youtube/         Search, scoring, age probe, download
+│   └── soundcloud/      Fallback search, matching, selection, download
 ├── config_pkg/
 │   ├── constants.py     Defaults, provider tables, regexes
-│   ├── config.py        SourceConfig, thresholds and provider priority
+│   ├── model.py         SourceConfig and source-list formatting
+│   ├── validate.py      Source-name/boolean/interval validation
+│   ├── loader.py        Settings and CLI value resolution
+│   ├── builder.py       build_source_config
+│   ├── config.py        Re-export facade for the modules above
 │   └── settings.py      Config-file discovery and CLI/config precedence
 ├── core/
 │   ├── context.py       RunContext: immutable per-run settings
-├   ├── result.py        Result: success/skip/fail outcome of one song
-├   ├── reporter.py      Exact per-song progress lines
-├   ├── runner.py        run_songs: download loop, done/failed logs, summary
-├   ├── pipeline.py      One-song orchestration
-├   ├── runtime.py       Health tracking, rate limiter, cache, HTTP session
-├   ├── matching.py      Normalization, similarity and candidate scoring
-├   ├── images.py        Cover detection, download, Pillow normalization and fallback chain
-├   ├── tags.py          MP3 / Opus / M4A tag writers
-├   └── files.py         Filenames, song parsing, done/failed logs
+│   ├── result.py        Result: success/skip/fail outcome of one song
+│   ├── reporter.py      Exact per-song progress lines
+│   ├── inputs.py        Input discovery, deduplication and output setup
+│   ├── runner.py        run_songs: download loop, done/failed logs, summary
+│   ├── sources.py       AudioSource implementations and registry
+│   ├── pipeline.py      One-song orchestration
+│   ├── runtime.py       Health tracking, rate limiter, cache, HTTP session
+│   ├── matching.py      Normalization, similarity and candidate scoring
+│   ├── images.py        Cover detection, download, Pillow normalization
+│   └── files.py         Filenames, song parsing, done/failed logs
 ├── metadata/
 │   └── lyrics.py        LRCLIB lookup, LRC parsing and sidecar writing
+├── tagging/
+│   ├── __init__.py      get_tagger factory and legacy add_metadata
+│   ├── mp3.py           ID3 writer
+│   ├── m4a.py           MP4 atom writer
+│   └── opus.py          Vorbis-comment writer
 ├── ui/
-│   ├── colors.py        Built-in color themes and ANSI rendering
+│   ├── colors.py        Theme selection and ANSI rendering
+│   ├── palettes.py      Built-in color palettes
 │   ├── themes.py        Custom themes.ini discovery and parsing
 │   └── helpfmt.py       Custom help formatter and epilog styling
 ├── providers/
@@ -53,8 +66,8 @@ trackfetch/
 │   ├── search.py        Shared query relaxation and candidate deduplication
 │   ├── duration.py      Millisecond/second duration normalization
 │   ├── registry.py      name -> provider function
-│   └── resolver.py      Priority, cooldowns, cache-aware resolution and fallbacks
-└── cli.py               Argument parsing and run orchestration
+│   └── resolver.py      Priority, cooldowns, cache-aware resolution
+└── (no top-level compatibility shims)
 ```
 
 ## Dependency direction
@@ -172,14 +185,14 @@ runner receives `process_song` as a parameter).
   SoundCloud runs once when YouTube fails in the way the trigger allows. With
   `soundcloud,youtube`, SoundCloud is searched first and YouTube is the
   fallback.
-- **`soundcloud.py` is pure matching plus two yt-dlp calls.** It never
+- **`audio/soundcloud/` is pure matching plus two yt-dlp calls.** It never
   downloads audio; it returns a ranked, filtered candidate list and the
   pipeline downloads at most one URL. This keeps the scoring testable with
   plain dictionaries and keeps the download order in the pipeline.
 - **The CLI never implements domain logic.** It parses arguments, builds a
   `SourceConfig`, creates the runtime and hands the song list to
   `core/runner.run_songs`, which owns the loop, the done/failed logs and the
-  summary.
+  summary. Parser options live in `cli_options.py`; `cli.py` composes them.
 - **Public names stay re-exported from `trackfetch/__init__.py`.** Tests and
   external code can keep using `trackfetch.normalize(...)`, while new code
   can import from the focused module directly.
@@ -190,6 +203,6 @@ runner receives `process_song` as a parameter).
    `(runtime, artist, title, config)` and returns a list of candidate dicts.
 2. Register it in `trackfetch/providers/registry.py`.
 3. Add the provider to `METADATA_PROVIDERS`, `PROVIDER_DEFAULTS` and
-   `PROVIDER_OPTIONS` in `trackfetch/constants.py`.
+   `PROVIDER_OPTIONS` in `trackfetch/config_pkg/constants.py`.
 4. Re-export the provider function from `trackfetch/__init__.py` if it
    should be part of the public API.

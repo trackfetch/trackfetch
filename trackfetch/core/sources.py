@@ -3,7 +3,6 @@
 
 from dataclasses import dataclass, field
 
-from .. import colors
 from ..audio.soundcloud.selection import describe_failure, trigger_allows
 from ..config_pkg.constants import (
     SOUNDCLOUD_DEFAULT_AMBIGUOUS,
@@ -12,6 +11,7 @@ from ..config_pkg.constants import (
 from ..enums import MusicSource
 from ..errors import YoutubeSearchError
 from ..protocols import AudioSource
+from ..ui import colors
 from .reporter import Reporter
 
 _report = Reporter()
@@ -198,15 +198,9 @@ class SoundcloudSource:
             previous.blocked,
         )
 
-    def find(self, artist, title, duration=None, previous=None, metadata=None):
-        """Return a selection, a failure, or None when the trigger declines."""
-        if not self._accepts(previous):
-            return None
-
-        self._announce(previous)
-
+    def _search(self, artist, title, duration):
         source_config = self._config
-        result = self._module.find_soundcloud_fallback(
+        return self._module.find_soundcloud_fallback(
             artist,
             title,
             duration,
@@ -221,14 +215,43 @@ class SoundcloudSource:
             fallback_names=self._fallback_names,
         )
 
+    def _reject(self, reason, raw_message=None):
+        """Build the transition outcome shared by every rejection path."""
+        if raw_message:
+            _report.fail_raw(f"FAILED: {raw_message}")
+
+        return SourceOutcome(
+            False,
+            reason,
+            transition_message=(
+                "SoundCloud did not produce a track; trying YouTube."
+            ),
+        )
+
+    def _tagged_metadata(self, metadata, candidate):
+        """Keep provider artwork unless the metadata source had none."""
+        if (metadata or {}).get("cover_url"):
+            return metadata
+
+        artwork = _soundcloud_artwork(candidate)
+
+        if not artwork:
+            return metadata
+
+        tagged_metadata = dict(metadata)
+        tagged_metadata["cover_url"] = artwork
+        return tagged_metadata
+
+    def find(self, artist, title, duration=None, previous=None, metadata=None):
+        """Return a selection, a failure, or None when the trigger declines."""
+        if not self._accepts(previous):
+            return None
+
+        self._announce(previous)
+        result = self._search(artist, title, duration)
+
         if not result.selected or not result.candidate:
-            return SourceOutcome(
-                False,
-                describe_failure(result),
-                transition_message=(
-                    "SoundCloud did not produce a track; trying YouTube."
-                ),
-            )
+            return self._reject(describe_failure(result))
 
         # The search results were already enriched with --dump-single-json
         # metadata, so the selected candidate is verified without another call.
@@ -236,58 +259,30 @@ class SoundcloudSource:
         blocked = self._module.blocked_reason(candidate)
 
         if blocked:
-            _report.fail_raw(f"FAILED: SoundCloud track {blocked}")
-            return SourceOutcome(
-                False,
+            return self._reject(
                 f"SoundCloud {blocked}",
-                transition_message=(
-                    "SoundCloud did not produce a track; trying YouTube."
-                ),
+                f"SoundCloud track {blocked}",
             )
 
-        preview = self._module.preview_reason(
-            candidate,
-            duration,
-        )
+        preview = self._module.preview_reason(candidate, duration)
 
         if preview:
-            _report.fail_raw(f"FAILED: SoundCloud track is {preview}")
-            return SourceOutcome(
-                False,
+            return self._reject(
                 f"SoundCloud {preview}",
-                transition_message=(
-                    "SoundCloud did not produce a track; trying YouTube."
-                ),
+                f"SoundCloud track is {preview}",
             )
 
         webpage_url = candidate.get("webpage_url")
 
         if not webpage_url:
             _report.fail("Invalid SoundCloud result")
-            return SourceOutcome(
-                False,
-                "invalid SoundCloud result",
-                transition_message=(
-                    "SoundCloud did not produce a track; trying YouTube."
-                ),
-            )
+            return self._reject("invalid SoundCloud result")
 
         _report.label(
             "Selected:",
             f"{candidate.get('title', 'Unknown')} "
             f"{colors.muted('(SoundCloud)')}",
         )
-
-        # Keep the provider artwork; only add SoundCloud art when the metadata
-        # source had none, so the tags stay consistent with the rest of the run.
-        tagged_metadata = metadata
-
-        if not (metadata or {}).get("cover_url"):
-            artwork = _soundcloud_artwork(candidate)
-
-            if artwork:
-                tagged_metadata = dict(metadata)
-                tagged_metadata["cover_url"] = artwork
 
         return SourceSelection(
             url=webpage_url,
@@ -296,7 +291,7 @@ class SoundcloudSource:
                 "thumbnails": candidate.get("thumbnails"),
                 "thumbnail": candidate.get("thumbnail"),
             },
-            metadata=tagged_metadata,
+            metadata=self._tagged_metadata(metadata, candidate),
             # SoundCloud artwork replaces the YouTube thumbnail fallback.
             allow_thumbnails=False,
         )
@@ -317,29 +312,31 @@ class SoundcloudSource:
         )
 
 
-def build_registry(
-    ctx,
-    *,
-    youtube_module,
-    soundcloud_module,
-    find_youtube,
-    download_audio,
-    probe_age_restriction,
-    fallback_names=None,
-):
+@dataclass(frozen=True)
+class SourceDependencies:
+    """The module-level functions and state the sources call into."""
+
+    youtube_module: object
+    soundcloud_module: object
+    find_youtube: object
+    download_audio: object
+    probe_age_restriction: object
+
+
+def build_registry(ctx, deps, fallback_names=None):
     """Build the {MusicSource: AudioSource} registry for one song."""
     return {
         MusicSource.YOUTUBE: YoutubeSource(
             ctx,
-            find_youtube,
-            download_audio,
-            probe_age_restriction,
-            youtube_module,
+            deps.find_youtube,
+            deps.download_audio,
+            deps.probe_age_restriction,
+            deps.youtube_module,
         ),
         MusicSource.SOUNDCLOUD: SoundcloudSource(
             ctx,
-            soundcloud_module,
-            download_audio,
+            deps.soundcloud_module,
+            deps.download_audio,
             fallback_names=fallback_names,
         ),
     }
@@ -352,6 +349,7 @@ def as_audio_source(source) -> AudioSource:
 
 __all__ = [
     "SoundcloudSource",
+    "SourceDependencies",
     "SourceOutcome",
     "SourceSelection",
     "YoutubeSource",

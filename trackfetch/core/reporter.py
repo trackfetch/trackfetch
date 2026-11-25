@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """User-facing output: the single place that talks in colors."""
 
-from .. import colors
+from ..ui import colors
 
 
 class Reporter:

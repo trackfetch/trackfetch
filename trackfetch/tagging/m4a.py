@@ -6,8 +6,8 @@ from pathlib import Path
 from mutagen.mp4 import MP4, MP4Cover
 
 from ..config_pkg.constants import DEFAULT_LYRICS_TYPE
-from ..images import detect_image_format
-from ..lyrics import add_m4a_lyrics
+from ..core.images import detect_image_format
+from ..metadata.lyrics import add_m4a_lyrics
 
 
 def _cover_value(cover_path):

@@ -10,9 +10,9 @@ import configparser
 import re
 from pathlib import Path
 
-from .. import colors
 from ..config_pkg.constants import THEMES_FILENAME
-from ..settings import config_candidates
+from ..config_pkg.settings import config_candidates
+from . import colors
 
 _HEX_RE = re.compile(r"^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 _DEFAULT_NAMES = ("", "default", "none", "terminal")

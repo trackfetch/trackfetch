@@ -6,7 +6,7 @@ import unicodedata
 
 from unidecode import unidecode
 
-from ...matching import MIN_ARTIST_SIMILARITY, normalize, similarity
+from ...core.matching import MIN_ARTIST_SIMILARITY, normalize, similarity
 from ...scoring import DEFAULT_YOUTUBE_SCORING
 
 

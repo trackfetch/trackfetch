@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """The resolved source configuration and its presentation helpers."""
 
-from .. import colors
 from ..config_pkg.constants import (
     ARTWORK_FALLBACKS,
     CACHE_DEFAULT_ENABLED,
@@ -20,6 +19,22 @@ from ..config_pkg.constants import (
     VOCALOID_HINTS,
 )
 from ..enums import MusicSource
+from ..ui import colors
+
+_SOURCE_OPTIONS = {
+    "match_threshold": DEFAULT_MATCH_THRESHOLD,
+    "title_threshold": DEFAULT_TITLE_THRESHOLD,
+    "none_selected": False,
+    "lyrics_enabled": LYRICS_DEFAULT_ENABLED,
+    "cache_enabled": CACHE_DEFAULT_ENABLED,
+    "lyrics_type": DEFAULT_LYRICS_TYPE,
+    "soundcloud_enabled": SOUNDCLOUD_DEFAULT_ENABLED,
+    "soundcloud_min_score": SOUNDCLOUD_MIN_SCORE,
+    "soundcloud_min_margin": SOUNDCLOUD_MIN_MARGIN,
+    "soundcloud_trigger": SOUNDCLOUD_DEFAULT_TRIGGER,
+    "soundcloud_ambiguous": SOUNDCLOUD_DEFAULT_AMBIGUOUS,
+    "music_sources": None,
+}
 
 
 class SourceConfig:
@@ -28,6 +43,10 @@ class SourceConfig:
     ``music_sources`` is the single source of truth for the music provider
     priority. ``youtube_enabled`` and ``soundcloud_enabled`` are computed
     properties kept for the public facade; assigning to them raises.
+
+    The optional settings stay available under their historical keyword names
+    and positional order. ``*options``/``**overrides`` keep the constructor
+    signature readable while accepting every old call unchanged.
     """
 
     def __init__(
@@ -35,31 +54,47 @@ class SourceConfig:
         metadata_sources,
         youtube_enabled=True,
         providers=None,
-        match_threshold=DEFAULT_MATCH_THRESHOLD,
-        title_threshold=DEFAULT_TITLE_THRESHOLD,
-        none_selected=False,
-        lyrics_enabled=LYRICS_DEFAULT_ENABLED,
-        cache_enabled=CACHE_DEFAULT_ENABLED,
-        lyrics_type=DEFAULT_LYRICS_TYPE,
-        soundcloud_enabled=SOUNDCLOUD_DEFAULT_ENABLED,
-        soundcloud_min_score=SOUNDCLOUD_MIN_SCORE,
-        soundcloud_min_margin=SOUNDCLOUD_MIN_MARGIN,
-        soundcloud_trigger=SOUNDCLOUD_DEFAULT_TRIGGER,
-        soundcloud_ambiguous=SOUNDCLOUD_DEFAULT_AMBIGUOUS,
-        music_sources=None,
+        *options,
+        **overrides,
     ):
+        if len(options) > len(_SOURCE_OPTIONS):
+            raise TypeError(
+                "SourceConfig() takes at most "
+                f"{3 + len(_SOURCE_OPTIONS)} positional arguments"
+            )
+
+        values = dict(zip(_SOURCE_OPTIONS, options, strict=False))
+
+        for name in values:
+            if name in overrides:
+                raise TypeError(
+                    "SourceConfig() got multiple values for argument "
+                    f"'{name}'"
+                )
+
+        unknown = set(overrides) - set(_SOURCE_OPTIONS)
+
+        if unknown:
+            raise TypeError(
+                "SourceConfig() got an unexpected keyword argument "
+                f"'{sorted(unknown)[0]}'"
+            )
+
+        values = {**_SOURCE_OPTIONS, **values, **overrides}
         self.metadata_sources = list(metadata_sources)
         self.providers = providers if providers is not None else {}
-        self.match_threshold = match_threshold
-        self.title_threshold = title_threshold
-        self.none_selected = bool(none_selected)
-        self.lyrics_enabled = bool(lyrics_enabled)
-        self.cache_enabled = bool(cache_enabled)
-        self.lyrics_type = lyrics_type
-        self.soundcloud_min_score = soundcloud_min_score
-        self.soundcloud_min_margin = soundcloud_min_margin
-        self.soundcloud_trigger = soundcloud_trigger
-        self.soundcloud_ambiguous = soundcloud_ambiguous
+        self.match_threshold = values["match_threshold"]
+        self.title_threshold = values["title_threshold"]
+        self.none_selected = bool(values["none_selected"])
+        self.lyrics_enabled = bool(values["lyrics_enabled"])
+        self.cache_enabled = bool(values["cache_enabled"])
+        self.lyrics_type = values["lyrics_type"]
+        self.soundcloud_min_score = values["soundcloud_min_score"]
+        self.soundcloud_min_margin = values["soundcloud_min_margin"]
+        self.soundcloud_trigger = values["soundcloud_trigger"]
+        self.soundcloud_ambiguous = values["soundcloud_ambiguous"]
+
+        music_sources = values["music_sources"]
 
         if music_sources is not None:
             self.music_sources = list(music_sources)
@@ -70,7 +105,7 @@ class SourceConfig:
                 name
                 for name, enabled in (
                     (MusicSource.YOUTUBE.value, youtube_enabled),
-                    (MusicSource.SOUNDCLOUD.value, soundcloud_enabled),
+                    (MusicSource.SOUNDCLOUD.value, values["soundcloud_enabled"]),
                 )
                 if enabled
             ]

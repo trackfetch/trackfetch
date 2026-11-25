@@ -10,27 +10,28 @@ import mutagen
 import requests
 
 from .. import soundcloud, youtube
-from ..config import build_source_config
-from ..config_pkg.constants import (
-    LYRICS_DEFAULT_ENABLED,
-)
-from ..context import RunContext
-from ..enums import AudioFormat, MusicSource
-from ..errors import CoverError, ProviderError
-from ..files import make_filename
-from ..images import download_best_cover
-from ..lyrics import fetch_lyrics, write_lrc_sidecar
-from ..providers.resolver import resolve_metadata
-from ..reporter import Reporter
-from ..result import Result
-from ..tagging import get_tagger
-from ..youtube import (
+from ..audio.youtube import (
     download_audio,
     find_youtube_video,
     probe_age_restriction,
     youtube_thumbnail_urls,
 )
+from ..config_pkg.config import build_source_config
+from ..config_pkg.constants import (
+    LYRICS_DEFAULT_ENABLED,
+)
+from ..enums import AudioFormat, MusicSource
+from ..errors import CoverError, ProviderError
+from ..metadata.lyrics import fetch_lyrics, write_lrc_sidecar
+from ..providers.resolver import resolve_metadata
+from ..tagging import get_tagger
+from .context import RunContext
+from .files import make_filename
+from .images import download_best_cover
+from .reporter import Reporter
+from .result import Result
 from .sources import (
+    SourceDependencies,
     SourceOutcome,
     SourceSelection,
     _soundcloud_artwork,
@@ -91,6 +92,46 @@ def _lyrics_lines(metadata, ctx: RunContext):
     return lyrics
 
 
+def _tag_download(audio_path, cover_path, metadata, ctx, lyrics):
+    """Write tags into the downloaded file; return an error string or None."""
+    try:
+        get_tagger(AudioFormat(ctx.audio_format)).tag(
+            audio_path,
+            cover_path,
+            metadata,
+            lyrics,
+            ctx.lyrics_type,
+        )
+
+    except (
+        mutagen.MutagenError,
+        CoverError,
+        KeyError,
+        ValueError,
+        OSError,
+    ) as error:
+        return f"metadata error: {error}"
+
+    return None
+
+
+def _move_download(audio_path, final_path, lyrics, ctx):
+    """Move a tagged file into place; return an error string or None."""
+    try:
+        shutil.move(str(audio_path), str(final_path))
+
+        try:
+            write_lrc_sidecar(final_path, lyrics, ctx.lyrics_type)
+
+        except OSError as error:
+            _report.warning(f"WARNING: could not write LRC file: {error}")
+
+    except OSError as error:
+        return f"move error: {error}"
+
+    return None
+
+
 def _download_and_tag(selection: SourceSelection, ctx: RunContext, download):
     """Download one chosen result, tag it and move it into place.
 
@@ -113,7 +154,6 @@ def _download_and_tag(selection: SourceSelection, ctx: RunContext, download):
 
     with tempfile.TemporaryDirectory() as temp:
         temp_dir = Path(temp)
-
         audio_path = download(
             selection.url,
             temp_dir,
@@ -138,39 +178,17 @@ def _download_and_tag(selection: SourceSelection, ctx: RunContext, download):
             cover_path = temp_dir / "cover.jpg"
 
         lyrics = _lyrics_lines(metadata, ctx)
+        error = _tag_download(
+            audio_path, cover_path, metadata, ctx, lyrics
+        )
 
-        try:
-            get_tagger(AudioFormat(ctx.audio_format)).tag(
-                audio_path,
-                cover_path,
-                metadata,
-                lyrics,
-                ctx.lyrics_type,
-            )
+        if error:
+            return Result(False, error)
 
-        except (
-            mutagen.MutagenError,
-            CoverError,
-            KeyError,
-            ValueError,
-            OSError,
-        ) as error:
-            return Result(False, f"metadata error: {error}")
+        error = _move_download(audio_path, final_path, lyrics, ctx)
 
-        try:
-            shutil.move(
-                str(audio_path),
-                str(final_path),
-            )
-
-            try:
-                write_lrc_sidecar(final_path, lyrics, ctx.lyrics_type)
-
-            except OSError as error:
-                _report.warning(f"WARNING: could not write LRC file: {error}")
-
-        except OSError as error:
-            return Result(False, f"move error: {error}")
+        if error:
+            return Result(False, error)
 
     _report.success(f"SUCCESS: {filename}")
 
@@ -184,15 +202,14 @@ def _source_registry(ctx):
         if ctx.input_artist and ctx.input_title
         else None
     )
-    return build_registry(
-        ctx,
+    deps = SourceDependencies(
         youtube_module=youtube,
         soundcloud_module=soundcloud,
         find_youtube=find_youtube_video,
         download_audio=download_audio,
         probe_age_restriction=probe_age_restriction,
-        fallback_names=fallback_names,
     )
+    return build_registry(ctx, deps, fallback_names=fallback_names)
 
 
 def _try_music_sources(metadata, ctx: RunContext):

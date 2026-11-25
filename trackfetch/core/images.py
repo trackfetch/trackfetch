@@ -6,9 +6,9 @@ from pathlib import Path
 
 import requests
 
-from .. import colors
 from ..config_pkg.constants import MAX_COVER_BYTES, MAX_COVER_SIZE, USER_AGENT
 from ..errors import CoverError
+from ..ui import colors
 
 IMAGE_FORMATS = {
     "jpeg": ("image/jpeg", ".jpg"),

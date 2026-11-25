@@ -13,7 +13,6 @@ network calls. The public names are re-exported here so the historical
 
 from dataclasses import dataclass, replace
 
-from ... import colors
 from ...config_pkg.constants import (
     SOUNDCLOUD_DEFAULT_AMBIGUOUS,
     SOUNDCLOUD_DEFAULT_ENABLED,
@@ -22,8 +21,9 @@ from ...config_pkg.constants import (
     SOUNDCLOUD_MIN_SCORE,
     SOUNDCLOUD_SEARCH_LIMIT,
 )
+from ...core.matching import normalize
 from ...errors import SoundcloudError
-from ...matching import normalize
+from ...ui import colors
 from .download import download_soundcloud_audio
 from .scoring import (
     blocked_reason,

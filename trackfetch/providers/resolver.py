@@ -51,6 +51,40 @@ def cached_metadata(runtime, artist, title, provider, config):
     )
 
 
+def _cached_or_none(runtime, artist, title, provider, config):
+    """Return a cached match, or None when there is no usable cache entry."""
+    return cached_metadata(runtime, artist, title, provider, config)
+
+
+def _fetch_candidates(runtime, provider, artist, title, config):
+    """Call one provider, recording auth, failure and malformed responses.
+
+    Returns the candidate list, or None when the provider failed. The caller
+    decides whether to fall back to a cache entry.
+    """
+    try:
+        return PROVIDER_FUNCTIONS[provider](
+            runtime,
+            artist,
+            title,
+            config,
+        )
+
+    except ProviderAuthError:
+        runtime.health.force_cooldown(provider, 600.0)
+        return None
+
+    except ProviderError:
+        runtime.health.record_failure(provider)
+        return None
+
+    except (KeyError, TypeError, ValueError, AttributeError, IndexError):
+        # A malformed but successful-looking API response is a failure,
+        # not a reason to abort the whole run.
+        runtime.health.record_failure(provider)
+        return None
+
+
 def resolve_metadata(artist: str, title: str, config: SourceConfig, runtime):
     """Return the first suitable metadata result in configured priority order.
 
@@ -62,82 +96,26 @@ def resolve_metadata(artist: str, title: str, config: SourceConfig, runtime):
     fallback = fallback_metadata(artist, title)
 
     for provider in metadata_sources_for(config, artist, title):
-        if runtime.health.in_cooldown(provider):
-            cached = cached_metadata(
-                runtime,
-                artist,
-                title,
-                provider,
-                config,
+        cooldown = runtime.health.in_cooldown(provider)
+
+        if cooldown or runtime.health.state(provider)["failures"] == 0:
+            cached = _cached_or_none(
+                runtime, artist, title, provider, config
             )
 
             if cached is not None:
                 return cached
 
-            continue
+            if cooldown:
+                continue
 
-        state = runtime.health.state(provider)
+        candidates = _fetch_candidates(
+            runtime, provider, artist, title, config
+        )
 
-        if state["failures"] == 0:
-            cached = cached_metadata(
-                runtime,
-                artist,
-                title,
-                provider,
-                config,
-            )
-
-            if cached is not None:
-                return cached
-
-        try:
-            candidates = PROVIDER_FUNCTIONS[provider](
-                runtime,
-                artist,
-                title,
-                config,
-            )
-
-        except ProviderAuthError:
-            runtime.health.force_cooldown(provider, 600.0)
-            cached = cached_metadata(
-                runtime,
-                artist,
-                title,
-                provider,
-                config,
-            )
-
-            if cached is not None:
-                return cached
-
-            continue
-
-        except ProviderError:
-            runtime.health.record_failure(provider)
-            cached = cached_metadata(
-                runtime,
-                artist,
-                title,
-                provider,
-                config,
-            )
-
-            if cached is not None:
-                return cached
-
-            continue
-
-        except (KeyError, TypeError, ValueError, AttributeError, IndexError):
-            # A malformed but successful-looking API response is a failure,
-            # not a reason to abort the whole run.
-            runtime.health.record_failure(provider)
-            cached = cached_metadata(
-                runtime,
-                artist,
-                title,
-                provider,
-                config,
+        if candidates is None:
+            cached = _cached_or_none(
+                runtime, artist, title, provider, config
             )
 
             if cached is not None:

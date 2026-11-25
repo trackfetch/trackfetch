@@ -7,8 +7,8 @@ import mutagen
 from mutagen.id3 import APIC, ID3, TALB, TDRC, TIT2, TPE1, TPE2, TRCK
 
 from ..config_pkg.constants import DEFAULT_LYRICS_TYPE
-from ..images import image_mime_type
-from ..lyrics import add_mp3_lyrics
+from ..core.images import image_mime_type
+from ..metadata.lyrics import add_mp3_lyrics
 
 
 def _write_text_tags(audio, metadata):

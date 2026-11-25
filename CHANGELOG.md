@@ -8,10 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 - Internal restructuring into layered subpackages (`audio/`, `config_pkg/`,
-  `core/`, `metadata/`, `ui/`) with typed errors, frozen dataclasses for
-  scoring and results, and `run_songs` extracted from the CLI. The public
-  API, CLI flags, config file and output format are unchanged; old module
-  paths keep importing via shims. See `docs/architecture.md`.
+  `core/`, `metadata/`, `tagging/`, `ui/`) with typed errors, frozen
+  dataclasses for scoring and results, a source registry, per-format taggers,
+  and run orchestration extracted from the CLI. The public API, CLI flags,
+  config file, output format, done/failed logs and exit codes are unchanged.
+  The temporary top-level compatibility shims were removed; import the
+  focused modules or the `trackfetch` facade. See `docs/architecture.md`.
 
 ## [2.3.4] - 2026-11-21
 

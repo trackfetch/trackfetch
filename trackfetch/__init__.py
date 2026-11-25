@@ -135,122 +135,10 @@ from .ui.themes import find_theme_file, load_theme_file, parse_theme_file
 
 __version__ = VERSION
 
+from ._lazy import _LAZY_MODULES, _LAZY_NAMES
+
+
 # Names that are imported only when first used, mapped to their module.
-_LAZY_NAMES = {
-    # images (requests)
-    "IMAGE_FORMATS": ".images",
-    "detect_image_format": ".images",
-    "download_best_cover": ".images",
-    "download_cover": ".images",
-    "image_mime_type": ".images",
-    "is_image_bytes": ".images",
-    # lyrics (requests, mutagen)
-    "add_m4a_lyrics": ".lyrics",
-    "add_mp3_lyrics": ".lyrics",
-    "add_opus_lyrics": ".lyrics",
-    "fetch_lyrics": ".lyrics",
-    "lrc_fraction_to_ms": ".lyrics",
-    "lrc_text": ".lyrics",
-    "lyrics_queries": ".lyrics",
-    "parse_synced_lyrics": ".lyrics",
-    "select_lyrics": ".lyrics",
-    "split_lyrics": ".lyrics",
-    "write_lrc_sidecar": ".lyrics",
-    "tag_lyrics_text": ".lyrics",
-    # pipeline and runtime
-    "process_song": ".pipeline",
-    "MetadataCache": ".runtime",
-    "MetadataRuntime": ".runtime",
-    "ProviderHealth": ".runtime",
-    "RateLimiter": ".runtime",
-    "request_json": ".runtime",
-    # tags (mutagen)
-    "add_m4a_metadata": ".tags",
-    "add_metadata": ".tags",
-    "add_mp3_metadata": ".tags",
-    "add_opus_metadata": ".tags",
-    # youtube (subprocess)
-    "download_audio": ".youtube",
-    "find_youtube_video": ".youtube",
-    "is_age_restriction_error": ".youtube",
-    "is_bot_check_error": ".youtube",
-    "probe_age_restriction": ".youtube",
-    "score_youtube_result": ".youtube",
-    "youtube_music_search": ".youtube",
-    "youtube_search": ".youtube",
-    "youtube_thumbnail_urls": ".youtube",
-    "youtube_video_details": ".youtube",
-    # soundcloud (subprocess)
-    "blocked_reason": ".soundcloud",
-    "describe_failure": ".soundcloud",
-    "duration_score": ".soundcloud",
-    "fetch_candidate_details": ".soundcloud",
-    "find_soundcloud_fallback": ".soundcloud",
-    "format_candidate": ".soundcloud",
-    "format_duration": ".soundcloud",
-    "is_formats_preview": ".soundcloud",
-    "is_version_mismatch": ".soundcloud",
-    "merge_details": ".soundcloud",
-    "parse_search_result": ".soundcloud",
-    "preview_reason": ".soundcloud",
-    "prompt_for_candidate": ".soundcloud",
-    "rank_candidates": ".soundcloud",
-    "reset_soundcloud_attempts": ".soundcloud",
-    "score_candidate": ".soundcloud",
-    "select_candidate": ".soundcloud",
-    "soundcloud_search": ".soundcloud",
-    "soundcloud_track_details": ".soundcloud",
-    # providers
-    "PROVIDER_FUNCTIONS": ".providers.registry",
-    "cached_metadata": ".providers.resolver",
-    "resolve_metadata": ".providers.resolver",
-    "deezer_provider": ".providers.deezer",
-    "itunes_provider": ".providers.itunes",
-    "upscale_itunes_artwork": ".providers.itunes",
-    "cover_art_archive_url": ".providers.musicbrainz",
-    "musicbrainz_artist": ".providers.musicbrainz",
-    "musicbrainz_provider": ".providers.musicbrainz",
-    "find_spotify_track": ".providers.spotify",
-    "get_spotify": ".providers.spotify",
-    "get_track_metadata": ".providers.spotify",
-    "is_spotify_auth_error": ".providers.spotify",
-    "spotify_credentials": ".providers.spotify",
-    "spotify_provider": ".providers.spotify",
-    "absolute_vocadb_url": ".providers.vocadb",
-    "vocadb_picture_url": ".providers.vocadb",
-    "vocadb_provider": ".providers.vocadb",
-}
-
-# Submodules importable as ``trackfetch.<name>`` without a prior import.
-_LAZY_MODULES = (
-    "cli",
-    "colors",
-    "config",
-    "constants",
-    "errors",
-    "files",
-    "helpfmt",
-    "images",
-    "lyrics",
-    "matching",
-    "pipeline",
-    "runtime",
-    "settings",
-    "soundcloud",
-    "tags",
-    "themes",
-    "youtube",
-    "providers",
-    "providers.deezer",
-    "providers.itunes",
-    "providers.musicbrainz",
-    "providers.registry",
-    "providers.resolver",
-    "providers.spotify",
-    "providers.vocadb",
-)
-
-
 def __getattr__(name):
     """Import a heavy name only when it is first accessed (PEP 562)."""
     module_name = _LAZY_NAMES.get(name)
@@ -260,8 +148,8 @@ def __getattr__(name):
         globals()[name] = value
         return value
 
-    if name in _LAZY_MODULES or name.startswith("providers."):
-        value = importlib.import_module(f".{name}", __name__)
+    if name in _LAZY_MODULES:
+        value = importlib.import_module(_LAZY_MODULES[name], __name__)
         globals()[name] = value
         return value
 

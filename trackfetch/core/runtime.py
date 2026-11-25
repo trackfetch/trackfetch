@@ -9,7 +9,7 @@ import requests
 
 from ..config_pkg.constants import CACHE_VERSION, USER_AGENT
 from ..errors import ProviderAuthError, ProviderError
-from ..matching import normalize
+from .matching import normalize
 
 
 class ProviderHealth:

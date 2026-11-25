@@ -5,7 +5,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import trackfetch.colors as colors  # noqa: E402
+from trackfetch.ui import colors  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 

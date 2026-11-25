@@ -20,8 +20,8 @@ from ..config_pkg.constants import (
     OPUS_SYNCED_LYRICS_KEY,
     USER_AGENT,
 )
+from ..core.matching import score_metadata
 from ..errors import ProviderError
-from ..matching import score_metadata
 from ..providers.search import query_variants
 from ..scoring import DEFAULT_LYRICS_SCORING
 

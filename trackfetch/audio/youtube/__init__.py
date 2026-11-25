@@ -8,7 +8,6 @@ historical mutable state (``LAST_SEARCH_HAD_CANDIDATES`` and
 
 from pathlib import Path
 
-from ... import colors
 from ...config_pkg.constants import (
     AUDIO_FORMATS,
     DEFAULT_AUDIO_QUALITY,
@@ -18,9 +17,10 @@ from ...config_pkg.constants import (
     YOUTUBE_MUSIC_MAX_DURATION_DIFF,
     YTDLP_REMOTE_COMPONENTS,
 )
+from ...core.matching import MIN_ARTIST_SIMILARITY
 from ...enums import AudioFormat
 from ...errors import YoutubeSearchError
-from ...matching import MIN_ARTIST_SIMILARITY
+from ...ui import colors
 from .age_probe import (
     is_age_restriction_error,
     is_bot_check_error,

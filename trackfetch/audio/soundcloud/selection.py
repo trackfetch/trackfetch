@@ -8,8 +8,8 @@ download.
 
 import sys
 
-from ... import colors
 from ...config_pkg.constants import SOUNDCLOUD_MIN_MARGIN, SOUNDCLOUD_MIN_SCORE
+from ...ui import colors
 from .search import _duration
 
 STATUS_SELECTED = "selected"

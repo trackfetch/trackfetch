@@ -7,7 +7,7 @@ import pytest
 
 from trackfetch import colors
 from trackfetch.cli import build_parser
-from trackfetch.helpfmt import HELP_POSITION, strip_ansi
+from trackfetch.ui.helpfmt import HELP_POSITION, strip_ansi
 
 WIDTHS = (80, 100, 140)
 
@@ -182,7 +182,7 @@ class TestHelpOutput:
 
     @pytest.mark.parametrize("flag", ("-v", "--version"))
     def test_version_prints_and_exits(self, capsys, flag):
-        from trackfetch.constants import VERSION
+        from trackfetch.config_pkg.constants import VERSION
 
         with pytest.raises(SystemExit) as exc:
             build_parser().parse_args([flag])

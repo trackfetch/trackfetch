@@ -6,7 +6,7 @@ import unicodedata
 
 from unidecode import unidecode
 
-from ...matching import normalize, similarity
+from ...core.matching import normalize, similarity
 from ...scoring import DEFAULT_SOUNDCLOUD_SCORING
 from .search import normalize_title_text
 
