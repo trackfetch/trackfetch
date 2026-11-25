@@ -6,7 +6,7 @@ from pathlib import Path
 import requests
 from mutagen.id3 import SYLT, USLT
 
-from ..constants import (
+from ..config_pkg.constants import (
     DEFAULT_LYRICS_TYPE,
     DEFAULT_MATCH_THRESHOLD,
     DEFAULT_TITLE_THRESHOLD,

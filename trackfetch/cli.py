@@ -7,7 +7,6 @@ import contextlib
 import io
 import math
 import sys
-import time
 from pathlib import Path
 
 from .config_pkg.config import build_source_config, config_str_value, format_source_list
@@ -23,7 +22,8 @@ from .config_pkg.constants import (
     VERSION,
 )
 from .config_pkg.settings import apply_config, load_config, resolve_output
-from .core.files import append_line, parse_song, read_done, read_song_file
+from .core.files import parse_song, read_done, read_song_file
+from .core.runner import run_songs
 from .enums import MusicSource
 from .ui import colors
 from .ui.helpfmt import TrackFetchHelpFormatter
@@ -80,15 +80,6 @@ def collect_sources(args, settings):
             sources.append(spec)
 
     return sources
-
-def format_summary(label_text, value, role):
-    """Color a summary label and value, muting zero counts."""
-    value_style = role if value else "muted"
-    return (
-        f"{colors.paint(label_text, role, 'bold')} "
-        f"{colors.paint(value, value_style)}"
-    )
-
 
 CONFIG_PATHS = (
     "--config PATH",
@@ -878,71 +869,13 @@ def main():
         spotify_args=args,
     )
 
-    success = 0
-    skipped = 0
-    failed = 0
-
-    for number, (artist, title) in enumerate(
+    run_songs(
         songs,
-        start=1,
-    ):
-        song_key = f"{artist} - {title}"
-
-        print()
-        print(colors.frame("=" * 60))
-        print(colors.progress(f"[{number}/{len(songs)}]"))
-        print(colors.paint(song_key, "text", "bold"))
-
-        if song_key in done:
-            print(colors.skip("SKIP: already completed"))
-            skipped += 1
-            continue
-
-        ok, reason = process_song(
-            artist,
-            title,
-            args.output,
-            args.title_only,
-            args.format,
-            args.audio_quality,
-            source_config=source_config,
-            runtime=runtime,
-        )
-
-        if ok:
-            if not args.no_logs:
-                append_line(
-                    done_file,
-                    song_key,
-                )
-
-            done.add(song_key)
-
-            if reason == "exists":
-                skipped += 1
-
-            else:
-                success += 1
-
-        else:
-            if not args.no_logs:
-                append_line(
-                    failed_file,
-                    f"{song_key} | {reason}",
-                )
-
-            failed += 1
-
-        if number < len(songs):
-            time.sleep(args.delay)
-
-    print()
-    print(colors.frame("=" * 60))
-    print(colors.heading("FINISHED"))
-    print(format_summary("SUCCESS:", success, "success"))
-    print(format_summary("SKIPPED:", skipped, "skip"))
-    print(format_summary("FAILED:", failed, "error"))
-
-    if not args.no_logs:
-        print(f"{colors.label('DONE FILE:')} {colors.muted(done_file)}")
-        print(f"{colors.label('FAILED FILE:')} {colors.muted(failed_file)}")
+        done,
+        done_file,
+        failed_file,
+        args,
+        source_config,
+        runtime,
+        process_song,
+    )

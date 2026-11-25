@@ -12,7 +12,7 @@ from urllib.parse import quote_plus
 from unidecode import unidecode
 
 from .. import colors
-from ..constants import (
+from ..config_pkg.constants import (
     AUDIO_FORMATS,
     DEFAULT_AUDIO_QUALITY,
     DEFAULT_TITLE_THRESHOLD,

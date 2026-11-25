@@ -4,7 +4,7 @@
 import re
 from pathlib import Path
 
-from ..constants import MAX_FILENAME_BYTES
+from ..config_pkg.constants import MAX_FILENAME_BYTES
 from ..enums import AudioFormat
 
 

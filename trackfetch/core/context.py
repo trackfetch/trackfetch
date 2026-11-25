@@ -4,7 +4,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..constants import DEFAULT_AUDIO_QUALITY, DEFAULT_FORMAT
+from ..config_pkg.constants import DEFAULT_AUDIO_QUALITY, DEFAULT_FORMAT
 
 
 @dataclass(frozen=True)

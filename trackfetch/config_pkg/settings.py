@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 from ..config import config_str_value, parse_bool
-from ..constants import CONFIG_ENV, CONFIG_FILENAME, CONFIG_SECTION
+from ..config_pkg.constants import CONFIG_ENV, CONFIG_FILENAME, CONFIG_SECTION
 
 
 def config_candidates():

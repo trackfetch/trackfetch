@@ -10,7 +10,7 @@ import requests
 
 from .. import colors, soundcloud, youtube
 from ..config import build_source_config
-from ..constants import (
+from ..config_pkg.constants import (
     DEFAULT_AUDIO_QUALITY,
     DEFAULT_FORMAT,
     LYRICS_DEFAULT_ENABLED,

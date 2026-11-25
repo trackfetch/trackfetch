@@ -10,7 +10,7 @@ from mutagen.id3 import APIC, ID3, TALB, TDRC, TIT2, TPE1, TPE2, TRCK
 from mutagen.mp4 import MP4, MP4Cover
 from mutagen.oggopus import OggOpus
 
-from ..constants import DEFAULT_LYRICS_TYPE
+from ..config_pkg.constants import DEFAULT_LYRICS_TYPE
 from ..images import detect_image_format, image_mime_type
 from ..lyrics import add_m4a_lyrics, add_mp3_lyrics, add_opus_lyrics
 

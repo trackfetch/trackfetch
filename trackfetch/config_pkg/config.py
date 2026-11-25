@@ -8,7 +8,7 @@ import math
 import re
 
 from .. import colors
-from ..constants import (
+from ..config_pkg.constants import (
     ARTWORK_FALLBACKS,
     CACHE_DEFAULT_ENABLED,
     CJK_RE,
@@ -298,14 +298,8 @@ def threshold_value(value, default: float, label: str) -> float:
     return number
 
 
-def build_source_config(args, settings):
-    """Resolve CLI flags, config settings and built-in defaults.
-
-    Precedence is CLI > config.ini > built-in defaults. The result does not
-    permanently change any user configuration.
-    """
-    settings = settings or {}
-
+def _provider_entries(settings):
+    """Build provider entries from defaults plus config-file overrides."""
     providers = {}
     config_enabled = set()
     config_disabled = set()
@@ -346,6 +340,11 @@ def build_source_config(args, settings):
 
         providers[name] = entry
 
+    return providers, config_enabled, config_disabled
+
+
+def _apply_provider_options(providers, args):
+    """Apply --provider key=value overrides; returns (cli_enabled, cli_disabled)."""
     cli_enabled = set()
     cli_disabled = set()
 
@@ -374,6 +373,12 @@ def build_source_config(args, settings):
 
             providers[name]["country"] = value
 
+    return cli_enabled, cli_disabled
+
+
+def _resolve_metadata_sources(args, settings, providers, config_enabled,
+                              config_disabled, cli_enabled, cli_disabled):
+    """Resolve the metadata source list; returns (sources, none_selected)."""
     cli_raw = getattr(args, "metadata_sources", None)
     cli_sources_given = cli_raw is not None
     raw_sources = (
@@ -444,6 +449,12 @@ def build_source_config(args, settings):
         providers[name]["enabled"] = name in sources
         providers[name]["disabled"] = name in disabled_for_promotion
 
+    return sources, none_selected
+
+
+def _resolve_music_sources(args, settings, config_disabled_sources,
+                           cli_disabled_sources):
+    """Resolve the music source priority list."""
     # Music providers follow the same precedence as metadata providers:
     # CLI list > config list > defaults, with explicit disables always winning
     # and explicit enables appending to the configured priority.
@@ -523,6 +534,11 @@ def build_source_config(args, settings):
             f"(choose from {', '.join(MUSIC_PROVIDERS)})"
         )
 
+    return music_sources
+
+
+def _resolve_feature_flags(args, settings):
+    """Resolve lyrics/cache toggles and the lyrics type."""
     lyrics_enabled = LYRICS_DEFAULT_ENABLED
 
     if "lyrics_enabled" in settings and str(settings["lyrics_enabled"]).strip():
@@ -574,25 +590,11 @@ def build_source_config(args, settings):
 
         lyrics_type = cli_lyrics_type
 
-    match_threshold = threshold_value(
-        getattr(args, "match_threshold", None),
-        threshold_value(
-            settings.get("match_threshold"),
-            DEFAULT_MATCH_THRESHOLD,
-            "match_threshold",
-        ),
-        "match_threshold",
-    )
-    title_threshold = threshold_value(
-        getattr(args, "title_threshold", None),
-        threshold_value(
-            settings.get("title_threshold"),
-            DEFAULT_TITLE_THRESHOLD,
-            "title_threshold",
-        ),
-        "title_threshold",
-    )
+    return lyrics_enabled, cache_enabled, lyrics_type
 
+
+def _resolve_soundcloud_options(args, settings):
+    """Resolve SoundCloud thresholds, trigger and ambiguity mode."""
     soundcloud_min_score = threshold_value(
         getattr(args, "soundcloud_min_score", None),
         threshold_value(
@@ -662,6 +664,78 @@ def build_source_config(args, settings):
             )
 
         soundcloud_ambiguous = cli_ambiguous
+
+    return soundcloud_min_score, soundcloud_min_margin, soundcloud_trigger, \
+        soundcloud_ambiguous
+
+
+def build_source_config(args, settings):
+    """Resolve CLI flags, config settings and built-in defaults.
+
+    Precedence is CLI > config.ini > built-in defaults. The result does not
+    permanently change any user configuration.
+    """
+    settings = settings or {}
+
+    providers, config_enabled, config_disabled = _provider_entries(settings)
+    cli_enabled, cli_disabled = _apply_provider_options(providers, args)
+
+    sources, none_selected = _resolve_metadata_sources(
+        args,
+        settings,
+        providers,
+        config_enabled,
+        config_disabled,
+        cli_enabled,
+        cli_disabled,
+    )
+
+    config_disabled_sources = set(
+        normalize_disable_sources(
+            config_str_value(settings, "disable_sources") or ""
+        )
+    )
+    cli_disabled_sources = set(
+        normalize_disable_sources(
+            getattr(args, "disable_sources", None) or ""
+        )
+    )
+
+    music_sources = _resolve_music_sources(
+        args,
+        settings,
+        config_disabled_sources,
+        cli_disabled_sources,
+    )
+    lyrics_enabled, cache_enabled, lyrics_type = _resolve_feature_flags(
+        args,
+        settings,
+    )
+    (
+        soundcloud_min_score,
+        soundcloud_min_margin,
+        soundcloud_trigger,
+        soundcloud_ambiguous,
+    ) = _resolve_soundcloud_options(args, settings)
+
+    match_threshold = threshold_value(
+        getattr(args, "match_threshold", None),
+        threshold_value(
+            settings.get("match_threshold"),
+            DEFAULT_MATCH_THRESHOLD,
+            "match_threshold",
+        ),
+        "match_threshold",
+    )
+    title_threshold = threshold_value(
+        getattr(args, "title_threshold", None),
+        threshold_value(
+            settings.get("title_threshold"),
+            DEFAULT_TITLE_THRESHOLD,
+            "title_threshold",
+        ),
+        "title_threshold",
+    )
 
     return SourceConfig(
         sources,

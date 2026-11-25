@@ -7,7 +7,7 @@ from pathlib import Path
 
 import requests
 
-from ..constants import CACHE_VERSION, USER_AGENT
+from ..config_pkg.constants import CACHE_VERSION, USER_AGENT
 from ..errors import ProviderAuthError, ProviderError
 from ..matching import normalize
 

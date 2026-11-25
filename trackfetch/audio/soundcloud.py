@@ -19,7 +19,7 @@ import unicodedata
 from unidecode import unidecode
 
 from .. import colors
-from ..constants import (
+from ..config_pkg.constants import (
     SOUNDCLOUD_DEFAULT_AMBIGUOUS,
     SOUNDCLOUD_DEFAULT_ENABLED,
     SOUNDCLOUD_DETAILS_LIMIT,
