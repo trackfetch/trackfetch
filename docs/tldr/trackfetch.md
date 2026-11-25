@@ -1,7 +1,7 @@
 # trackfetch
 
 > Download songs listed in a text file as tagged MP3, M4A or Opus files, using configurable free metadata sources and music providers (YouTube and SoundCloud).
-> Requires `yt-dlp` and `ffmpeg`. Spotify is optional and only used when selected.
+> Requires `yt-dlp`, `ffmpeg` and `ffprobe`. Spotify is optional and only used when selected.
 > More information: <https://github.com/trackfetch/trackfetch#usage>.
 
 - Download every song from a file with one `Artist - Title` per line into the current directory:
