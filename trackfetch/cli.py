@@ -10,9 +10,8 @@ import sys
 import time
 from pathlib import Path
 
-from . import colors
-from .config import build_source_config, config_str_value, format_source_list
-from .constants import (
+from .config_pkg.config import build_source_config, config_str_value, format_source_list
+from .config_pkg.constants import (
     AUDIO_FORMATS,
     CACHE_FILENAME,
     DEFAULT_AUDIO_QUALITY,
@@ -23,11 +22,12 @@ from .constants import (
     METADATA_PROVIDERS,
     VERSION,
 )
+from .config_pkg.settings import apply_config, load_config, resolve_output
+from .core.files import append_line, parse_song, read_done, read_song_file
 from .enums import MusicSource
-from .files import append_line, parse_song, read_done, read_song_file
-from .helpfmt import TrackFetchHelpFormatter
-from .settings import apply_config, load_config, resolve_output
-from .themes import find_theme_file, load_theme_file
+from .ui import colors
+from .ui.helpfmt import TrackFetchHelpFormatter
+from .ui.themes import find_theme_file, load_theme_file
 
 
 def collect_sources(args, settings):

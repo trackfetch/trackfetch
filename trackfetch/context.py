@@ -1,26 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Per-song execution context shared by the pipeline functions."""
+"""Compatibility shim: the module moved to ``trackfetch.core.context``.
 
-from dataclasses import dataclass
-from pathlib import Path
+Kept so ``trackfetch.context`` keeps working for the public facade and
+tests. The real module is registered in ``sys.modules`` under the old
+name, so ``import trackfetch.context`` returns the same object everywhere.
+"""
 
-from .constants import DEFAULT_AUDIO_QUALITY, DEFAULT_FORMAT
+import sys
 
+from trackfetch.core.context import *  # noqa: F401,F403
 
-@dataclass(frozen=True)
-class RunContext:
-    """Everything one song's download needs, grouped in one object.
-
-    Replaces the previous 10-11 parameter function signatures. ``output``,
-    ``title_only``, ``audio_format`` and ``audio_quality`` come from the CLI;
-    ``source_config`` and ``runtime`` from the run setup; ``lyrics_type`` is
-    already resolved (never None).
-    """
-
-    output: Path
-    title_only: bool
-    audio_format: str = DEFAULT_FORMAT
-    audio_quality: int = DEFAULT_AUDIO_QUALITY
-    source_config: object = None
-    runtime: object = None
-    lyrics_type: str = "inline"
+_real = sys.modules["trackfetch.core.context"]
+sys.modules["trackfetch.context"] = _real

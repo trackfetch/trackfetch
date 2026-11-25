@@ -14,8 +14,7 @@ mutagen, spotipy or the provider stack is imported on first access. That keeps
 import importlib
 
 from .cli import collect_sources, main
-from .colors import DEFAULT_COLOR_MODE, DEFAULT_THEME, theme_names
-from .config import (
+from .config_pkg.config import (
     SourceConfig,
     build_source_config,
     config_str_value,
@@ -31,7 +30,7 @@ from .config import (
     split_source_names,
     threshold_value,
 )
-from .constants import (
+from .config_pkg.constants import (
     ARTWORK_FALLBACKS,
     AUDIO_FORMATS,
     CACHE_DEFAULT_ENABLED,
@@ -80,7 +79,35 @@ from .constants import (
     YOUTUBE_MUSIC_SEARCH_LIMIT,
     YTDLP_REMOTE_COMPONENTS,
 )
-from .context import RunContext
+from .config_pkg.settings import (
+    apply_config,
+    coerce_config_value,
+    config_candidates,
+    config_path_value,
+    find_config_file,
+    load_config,
+    resolve_output,
+)
+from .core.context import RunContext
+from .core.files import (
+    append_line,
+    make_filename,
+    parse_song,
+    read_done,
+    read_song_file,
+    sanitize_filename,
+)
+from .core.matching import (
+    ArtistThresholds,
+    artist_similarity,
+    fallback_metadata,
+    normalize,
+    score_metadata,
+    select_best_metadata,
+    similarity,
+)
+from .core.reporter import Reporter
+from .core.result import Result
 from .enums import AudioFormat, MusicSource
 from .errors import (
     ConfigError,
@@ -92,25 +119,6 @@ from .errors import (
     TrackFetchError,
     YoutubeSearchError,
 )
-from .files import (
-    append_line,
-    make_filename,
-    parse_song,
-    read_done,
-    read_song_file,
-    sanitize_filename,
-)
-from .matching import (
-    ArtistThresholds,
-    artist_similarity,
-    fallback_metadata,
-    normalize,
-    score_metadata,
-    select_best_metadata,
-    similarity,
-)
-from .reporter import Reporter
-from .result import Result
 from .scoring import (
     DEFAULT_LYRICS_SCORING,
     DEFAULT_METADATA_SCORING,
@@ -121,16 +129,8 @@ from .scoring import (
     SoundcloudScoring,
     YoutubeScoring,
 )
-from .settings import (
-    apply_config,
-    coerce_config_value,
-    config_candidates,
-    config_path_value,
-    find_config_file,
-    load_config,
-    resolve_output,
-)
-from .themes import find_theme_file, load_theme_file, parse_theme_file
+from .ui.colors import DEFAULT_COLOR_MODE, DEFAULT_THEME, theme_names
+from .ui.themes import find_theme_file, load_theme_file, parse_theme_file
 
 __version__ = VERSION
 

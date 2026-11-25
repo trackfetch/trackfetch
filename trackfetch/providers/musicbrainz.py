@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """MusicBrainz + Cover Art Archive metadata provider."""
 
-from ..config import SourceConfig
-from ..constants import USER_AGENT
+from ..config_pkg.config import SourceConfig
+from ..config_pkg.constants import USER_AGENT
+from ..core.runtime import request_json
 from ..errors import ProviderAuthError, ProviderError
-from ..runtime import request_json
 from .duration import milliseconds_to_seconds
 from .search import search_variants
 

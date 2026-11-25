@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Provider selection, cooldowns and cache-aware metadata resolution."""
 
-from ..config import SourceConfig, effective_metadata_sources
+from ..config_pkg.config import SourceConfig, effective_metadata_sources
+from ..core.matching import fallback_metadata, select_best_metadata
+from ..core.runtime import MetadataRuntime
 from ..errors import ProviderAuthError, ProviderError
-from ..matching import fallback_metadata, select_best_metadata
-from ..runtime import MetadataRuntime
 from .registry import PROVIDER_FUNCTIONS
 
 FALLBACK_METADATA_SOURCES = ("deezer", "musicbrainz")

@@ -7,7 +7,7 @@ compare anything. These helpers retry with progressively looser free-text
 queries and stop as soon as an existing scorer accepts a result.
 """
 
-from ..matching import select_best_metadata
+from ..core.matching import select_best_metadata
 
 MIN_TITLE_TOKENS = 2
 MAX_RELAXED_QUERIES = 5

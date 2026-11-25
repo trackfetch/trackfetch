@@ -8,9 +8,9 @@ from spotipy.exceptions import SpotifyException
 from spotipy.oauth2 import SpotifyClientCredentials
 
 from .. import colors
-from ..config import SourceConfig
+from ..config_pkg.config import SourceConfig
+from ..core.matching import similarity
 from ..errors import ProviderAuthError, ProviderError
-from ..matching import similarity
 from .duration import milliseconds_to_seconds
 
 

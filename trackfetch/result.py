@@ -1,23 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""The result of one pipeline attempt: a status plus a machine reason."""
+"""Compatibility shim: the module moved to ``trackfetch.core.result``.
 
-from dataclasses import dataclass
+Kept so ``trackfetch.result`` keeps working for the public facade and
+tests. The real module is registered in ``sys.modules`` under the old
+name, so ``import trackfetch.result`` returns the same object everywhere.
+"""
 
+import sys
 
-@dataclass(frozen=True)
-class Result:
-    """Outcome of one download attempt.
+from trackfetch.core.result import *  # noqa: F401,F403
 
-    ``status`` answers "did we get a file"; ``reason`` is the short
-    machine-readable string written to failed.txt (or a skip marker such as
-    ``exists``). ``download_failed`` additionally marks yt-dlp returning no
-    audio so the caller can decide whether the failure is worth a fallback.
-    """
-
-    ok: bool
-    reason: str
-    download_failed: bool = False
-
-    def __iter__(self):
-        # Backwards compatibility with the historical (ok, reason) tuple.
-        return iter((self.ok, self.reason))
+_real = sys.modules["trackfetch.core.result"]
+sys.modules["trackfetch.result"] = _real

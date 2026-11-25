@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Deezer Search API metadata provider."""
 
-from ..config import SourceConfig
+from ..config_pkg.config import SourceConfig
+from ..core.runtime import request_json
 from ..errors import ProviderError
-from ..runtime import request_json
 from .duration import seconds
 from .search import search_variants
 

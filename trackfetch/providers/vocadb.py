@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """VocaDB metadata provider (useful for Vocaloid and CJK tracks)."""
 
-from ..config import SourceConfig
+from ..config_pkg.config import SourceConfig
+from ..core.runtime import request_json
 from ..errors import ProviderError
-from ..runtime import request_json
 from .search import search_variants
 
 
