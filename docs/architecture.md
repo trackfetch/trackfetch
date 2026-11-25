@@ -79,94 +79,111 @@ Dependencies point in one direction:
 
 ```mermaid
 flowchart TD
-    subgraph Foundation
-        constants[constants]
-        errors[errors]
-        matching[matching]
-        colors[colors]
+    subgraph interface["Interface"]
+        cli[cli.py]
+        cli_options[cli_options.py]
+        facade["__init__.py<br/>public facade"]
+        themes[ui/themes.py]
     end
 
-    subgraph Configuration
-        config[config]
-        settings[settings]
-        runtime[runtime]
-        themes[themes]
+    subgraph orchestration["Orchestration"]
+        runner[core/runner.py]
+        pipeline[core/pipeline.py]
+        sources[core/sources.py]
+        inputs[core/inputs.py]
     end
 
-    subgraph Sources
-        providers["providers/*"]
-        youtube[youtube]
-        images[images]
-        lyrics[lyrics]
-        tags[tags]
-        files[files]
+    subgraph audio["Audio sources"]
+        youtube[audio/youtube/]
+        soundcloud[audio/soundcloud/]
     end
 
-    pipeline[pipeline]
-    cli[cli]
+    tagging[tagging/]
+    lyrics[metadata/lyrics.py]
 
-    constants --> config
-    errors --> config
-    matching --> config
-    constants --> settings
-    config --> settings
-    constants --> runtime
-    errors --> runtime
-    matching --> runtime
-    colors --> themes
-    constants --> themes
-    settings --> themes
+    subgraph providers["Providers"]
+        provider_modules["providers/*<br/>itunes, deezer, ..."]
+        resolver[providers/resolver.py]
+    end
 
-    config --> providers
-    errors --> providers
-    matching --> providers
-    runtime --> providers
-    constants --> youtube
-    matching --> youtube
-    colors --> youtube
-    constants --> soundcloud
-    errors --> soundcloud
-    matching --> soundcloud
-    colors --> soundcloud
-    constants --> images
-    colors --> images
-    youtube --> images
-    constants --> lyrics
-    errors --> lyrics
-    matching --> lyrics
-    constants --> tags
-    images --> tags
-    lyrics --> tags
-    constants --> files
+    config["config_pkg/*<br/>model, loader, builder, settings"]
 
-    config --> pipeline
-    colors --> pipeline
-    files --> pipeline
-    images --> pipeline
-    lyrics --> pipeline
-    providers --> pipeline
-    tags --> pipeline
-    youtube --> pipeline
-    soundcloud --> pipeline
+    subgraph state["Runtime state"]
+        context[core/context.py]
+        result[core/result.py]
+        reporter[core/reporter.py]
+        files[core/files.py]
+        runtime_state[core/runtime.py]
+        images[core/images.py]
+    end
 
-    colors --> cli
-    themes --> cli
-    config --> cli
-    settings --> cli
-    runtime --> cli
-    files --> cli
-    pipeline --> cli
+    subgraph support["Shared helpers"]
+        matching[core/matching.py]
+        colors[ui/colors.py]
+        dependencies[core/dependencies.py]
+    end
+
+    subgraph foundation["Foundation"]
+        constants[config_pkg/constants.py]
+        enums[enums.py]
+        errors[errors.py]
+        scoring[scoring.py]
+        protocols[protocols.py]
+        palettes[ui/palettes.py]
+    end
+
+    interface --> orchestration
+    interface --> config
+    interface --> state
+    interface --> support
+    interface --> foundation
+
+    orchestration --> audio
+    orchestration --> tagging
+    orchestration --> lyrics
+    orchestration --> providers
+    orchestration --> config
+    orchestration --> state
+    orchestration --> support
+    orchestration --> foundation
+
+    audio --> support
+    audio --> foundation
+    soundcloud --> youtube
+
+    tagging --> lyrics
+    tagging --> state
+    tagging --> foundation
+
+    lyrics --> providers
+    lyrics --> support
+    lyrics --> foundation
+
+    providers --> state
+    providers --> support
+    providers --> config
+    providers --> foundation
+
+    state --> support
+    state --> foundation
+
+    support --> foundation
+    config --> foundation
 ```
 
-This keeps the network providers independent from the CLI and makes each
-piece testable on its own. `providers/registry.py` is the only place that
-knows which providers exist; adding a provider means adding one module and
-one registry entry.
+Read it top to bottom: each row may use only the rows below it. The
+`Interface` row (`cli.py`, `cli_options.py`, the `trackfetch/__init__.py`
+facade and `ui/themes.py`) is the only place that knows the whole graph.
+`core/runner.py` receives `process_song` as a parameter instead of importing
+`cli.py`, so nothing imports upward into the CLI.
 
-Dependencies never point "up" the layers: `audio/`, `metadata/`, `providers/`
-and `ui/` do not import from `core/`, and only `core/runner.py` and the
-facade are allowed to touch `cli.py` territory (and even they do not — the
-runner receives `process_song` as a parameter).
+`audio/`, `metadata/` and `providers/` reuse the *pure* helpers in
+`core/matching.py` and `core/runtime.py` (normalization, similarity, the HTTP
+session) and `tagging/` reuses `core/images.py` (image format detection), but
+none of them import `core/runner.py`, `core/pipeline.py` or `core/sources.py`.
+That is what keeps them testable with plain dictionaries and makes
+`providers/registry.py` the only module that knows which metadata providers
+exist.
 
 ## Design rules
 
