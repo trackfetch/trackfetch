@@ -16,7 +16,7 @@ from ..config_pkg.constants import (
     LYRICS_DEFAULT_ENABLED,
 )
 from ..context import RunContext
-from ..enums import MusicSource
+from ..enums import AudioFormat, MusicSource
 from ..errors import CoverError, ProviderError
 from ..files import make_filename
 from ..images import download_best_cover
@@ -24,7 +24,7 @@ from ..lyrics import fetch_lyrics, write_lrc_sidecar
 from ..providers.resolver import resolve_metadata
 from ..reporter import Reporter
 from ..result import Result
-from ..tags import add_metadata
+from ..tagging import get_tagger
 from ..youtube import (
     download_audio,
     find_youtube_video,
@@ -141,7 +141,7 @@ def _download_and_tag(selection: SourceSelection, ctx: RunContext, download):
         lyrics = _lyrics_lines(metadata, ctx)
 
         try:
-            add_metadata(
+            get_tagger(AudioFormat(ctx.audio_format)).tag(
                 audio_path,
                 cover_path,
                 metadata,

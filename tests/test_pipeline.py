@@ -399,10 +399,11 @@ class TestProcessSong:
         assert "could not write LRC file" in capsys.readouterr().out
 
     def test_metadata_error(self, pipeline, tmp_path, monkeypatch):
-        def boom(*args):
-            raise ValueError("bad tag")
+        class BrokenTagger:
+            def tag(self, *args):
+                raise ValueError("bad tag")
 
-        monkeypatch.setattr(m.pipeline, "add_metadata", boom)
+        monkeypatch.setattr(m.pipeline, "get_tagger", lambda fmt: BrokenTagger())
         assert m.process_song("a", "b", tmp_path, False) == (False, "metadata error: bad tag")
 
     def test_move_error(self, pipeline, tmp_path, monkeypatch):
