@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Internal restructuring into layered subpackages (`audio/`, `config_pkg/`,
+  `core/`, `metadata/`, `ui/`) with typed errors, frozen dataclasses for
+  scoring and results, and `run_songs` extracted from the CLI. The public
+  API, CLI flags, config file and output format are unchanged; old module
+  paths keep importing via shims. See `docs/architecture.md`.
+
 ## [2.3.4] - 2026-11-21
 
 ### Added

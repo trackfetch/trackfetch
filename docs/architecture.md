@@ -7,18 +7,43 @@ working.
 
 ## Module map
 
+The package is organized in layers. Old module paths
+(`trackfetch.youtube`, `trackfetch.config`, ...) still import through
+thin shim modules, so existing integrations keep working.
+
 ```
 trackfetch/
 ├── __init__.py          Public facade and re-exports
 ├── __main__.py          python -m trackfetch
-├── constants.py         Defaults, provider tables, regexes
-├── errors.py            ProviderError / ProviderAuthError
-├── colors.py            Built-in color themes and ANSI rendering
-├── themes.py            Custom themes.ini discovery and parsing
-├── matching.py          Normalization, similarity and candidate scoring
-├── config.py            SourceConfig, thresholds and provider priority
-├── settings.py          Config-file discovery and CLI/config precedence
-├── runtime.py           Health tracking, rate limiter, cache, HTTP session
+├── constants.py         Shim -> config_pkg.constants
+├── errors.py            TrackFetchError hierarchy (config, tagging, cover)
+├── enums.py             AudioFormat / MusicSource str-enums
+├── protocols.py         AudioSource / Tagger runtime-checkable protocols
+├── scoring.py           Frozen dataclasses for candidate scoring
+├── audio/
+│   ├── youtube.py       Search, scoring, age-restriction probe, audio download
+│   └── soundcloud.py    SoundCloud fallback search, matching and selection
+├── config_pkg/
+│   ├── constants.py     Defaults, provider tables, regexes
+│   ├── config.py        SourceConfig, thresholds and provider priority
+│   └── settings.py      Config-file discovery and CLI/config precedence
+├── core/
+│   ├── context.py       RunContext: immutable per-run settings
+├   ├── result.py        Result: success/skip/fail outcome of one song
+├   ├── reporter.py      Exact per-song progress lines
+├   ├── runner.py        run_songs: download loop, done/failed logs, summary
+├   ├── pipeline.py      One-song orchestration
+├   ├── runtime.py       Health tracking, rate limiter, cache, HTTP session
+├   ├── matching.py      Normalization, similarity and candidate scoring
+├   ├── images.py        Cover detection, download, Pillow normalization and fallback chain
+├   ├── tags.py          MP3 / Opus / M4A tag writers
+├   └── files.py         Filenames, song parsing, done/failed logs
+├── metadata/
+│   └── lyrics.py        LRCLIB lookup, LRC parsing and sidecar writing
+├── ui/
+│   ├── colors.py        Built-in color themes and ANSI rendering
+│   ├── themes.py        Custom themes.ini discovery and parsing
+│   └── helpfmt.py       Custom help formatter and epilog styling
 ├── providers/
 │   ├── spotify.py       Optional Spotify provider
 │   ├── itunes.py        iTunes Search API
@@ -29,14 +54,7 @@ trackfetch/
 │   ├── duration.py      Millisecond/second duration normalization
 │   ├── registry.py      name -> provider function
 │   └── resolver.py      Priority, cooldowns, cache-aware resolution and fallbacks
-├── youtube.py           Search, scoring, age-restriction probe, audio download
-├── soundcloud.py        SoundCloud fallback search, matching and selection
-├── images.py            Cover detection, download, Pillow normalization and fallback chain
-├── lyrics.py            LRCLIB lookup, LRC parsing and sidecar writing
-├── tags.py              MP3 / Opus / M4A tag writers
-├── files.py             Filenames, song parsing, done/failed logs
-├── pipeline.py          One-song orchestration
-└── cli.py               Argument parsing and run loop
+└── cli.py               Argument parsing and run orchestration
 ```
 
 ## Dependency direction
@@ -129,11 +147,21 @@ piece testable on its own. `providers/registry.py` is the only place that
 knows which providers exist; adding a provider means adding one module and
 one registry entry.
 
+Dependencies never point "up" the layers: `audio/`, `metadata/`, `providers/`
+and `ui/` do not import from `core/`, and only `core/runner.py` and the
+facade are allowed to touch `cli.py` territory (and even they do not — the
+runner receives `process_song` as a parameter).
+
 ## Design rules
 
 - **One run, one `MetadataRuntime`.** It owns the HTTP session, rate
   limiter, provider health, cache and Spotify client. Providers receive it
-  instead of creating module-level clients.
+  instead of creating module-level clients. The per-run choices (format,
+  quality, thresholds, runtime) travel in a frozen `RunContext`; the outcome
+  of one song is a frozen `Result`.
+- **Errors are typed.** Modules raise `ConfigError`, `TaggingError`,
+  `CoverError` or `ProviderError` from `trackfetch/errors.py`; there are no
+  bare `except Exception` handlers.
 - **Providers return candidates; the resolver decides.** Provider functions
   only translate an API response into the common metadata dict. Thresholds,
   priority, cooldowns and caching live in `providers/resolver.py`.
@@ -149,7 +177,9 @@ one registry entry.
   pipeline downloads at most one URL. This keeps the scoring testable with
   plain dictionaries and keeps the download order in the pipeline.
 - **The CLI never implements domain logic.** It parses arguments, builds a
-  `SourceConfig`, creates the runtime and loops over songs.
+  `SourceConfig`, creates the runtime and hands the song list to
+  `core/runner.run_songs`, which owns the loop, the done/failed logs and the
+  summary.
 - **Public names stay re-exported from `trackfetch/__init__.py`.** Tests and
   external code can keep using `trackfetch.normalize(...)`, while new code
   can import from the focused module directly.
