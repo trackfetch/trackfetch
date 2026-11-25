@@ -17,12 +17,15 @@ from .constants import (
     SOUNDCLOUD_DEFAULT_AMBIGUOUS,
     SOUNDCLOUD_DEFAULT_TRIGGER,
 )
+from .context import RunContext
 from .enums import MusicSource
 from .errors import CoverError, ProviderError, YoutubeSearchError
 from .files import make_filename
 from .images import download_best_cover
 from .lyrics import fetch_lyrics, write_lrc_sidecar
 from .providers.resolver import resolve_metadata
+from .reporter import Reporter
+from .result import Result
 from .tags import add_metadata
 from .youtube import (
     download_audio,
@@ -32,37 +35,79 @@ from .youtube import (
     probe_age_restriction,
 )
 
+_report = Reporter()
 
-def _download_and_tag(
-    metadata,
-    video,
-    video_url,
-    output,
-    title_only,
-    audio_format,
-    audio_quality,
-    source_config,
-    runtime,
-    lyrics_type,
-    youtube_enabled,
-):
+
+def _lyrics_lines(metadata, ctx: RunContext):
+    """Fetch lyrics and print their status. Returns the lyrics dict or None."""
+    lyrics_enabled = (
+        LYRICS_DEFAULT_ENABLED
+        if ctx.source_config is None
+        else ctx.source_config.lyrics_enabled
+    )
+
+    if not lyrics_enabled:
+        return None
+
+    lyrics = None
+    lyrics_error = False
+
+    try:
+        lyrics = fetch_lyrics(
+            metadata["artist"],
+            metadata["title"],
+            ctx.runtime,
+            duration=metadata.get("duration"),
+        )
+
+    except (
+        requests.RequestException,
+        ProviderError,
+        ValueError,
+        OSError,
+    ) as error:
+        lyrics_error = True
+        _report.label_plain("Lyrics:", f"not found ({error})")
+
+    if lyrics:
+        timed = bool(lyrics.get("synced"))
+
+        if timed:
+            place = (
+                "sidecar + tags"
+                if ctx.lyrics_type == "sidecar"
+                else "embedded"
+            )
+            _report.label_success("Lyrics:", f"synced ({place})")
+
+        else:
+            _report.label_plain("Lyrics:", "plain only (no synced version)")
+
+    elif not lyrics_error:
+        _report.label_plain("Lyrics:", "not found")
+
+    return lyrics
+
+
+def _download_and_tag(metadata, video, video_url, ctx: RunContext,
+                      youtube_enabled):
     """Download one chosen result, tag it and move it into place.
 
-    Returns ``(ok, reason, download_failed)``. ``download_failed`` is True
-    only when yt-dlp itself returned no audio, so the caller can decide
-    whether the result is an age restriction worth a fallback.
+    Returns a :class:`Result`. ``download_failed`` is True only when yt-dlp
+    itself returned no audio, so the caller can decide whether the result is
+    an age restriction worth a fallback.
     """
     filename = make_filename(
         metadata,
-        title_only,
-        audio_format,
+        ctx.title_only,
+        ctx.audio_format,
     )
 
-    final_path = output / filename
+    final_path = ctx.output / filename
 
     if final_path.exists():
-        print(f"{colors.skip('SKIP:')} already exists: {filename}")
-        return True, "exists", False
+        _report.skip(f"already exists: {filename}")
+        return Result(True, "exists")
 
     with tempfile.TemporaryDirectory() as temp:
         temp_dir = Path(temp)
@@ -70,12 +115,12 @@ def _download_and_tag(
         audio_path = download_audio(
             video_url,
             temp_dir,
-            audio_format,
-            audio_quality,
+            ctx.audio_format,
+            ctx.audio_quality,
         )
 
         if not audio_path:
-            return False, "yt-dlp download failed", True
+            return Result(False, "yt-dlp download failed", True)
 
         cover_path = download_best_cover(
             metadata,
@@ -87,58 +132,7 @@ def _download_and_tag(
         if cover_path is None:
             cover_path = temp_dir / "cover.jpg"
 
-        lyrics = None
-        lyrics_enabled = (
-            LYRICS_DEFAULT_ENABLED
-            if source_config is None
-            else source_config.lyrics_enabled
-        )
-
-        if lyrics_enabled:
-            lyrics_error = False
-
-            try:
-                lyrics = fetch_lyrics(
-                    metadata["artist"],
-                    metadata["title"],
-                    runtime,
-                    duration=metadata.get("duration"),
-                )
-
-            except (
-                requests.RequestException,
-                ProviderError,
-                ValueError,
-                OSError,
-            ) as error:
-                lyrics_error = True
-                print(
-                    f"{colors.label('Lyrics:')} "
-                    f"{colors.muted(f'not found ({error})')}"
-                )
-
-            if lyrics:
-                timed = bool(lyrics.get("synced"))
-
-                if timed:
-                    place = (
-                        "sidecar + tags"
-                        if lyrics_type == "sidecar"
-                        else "embedded"
-                    )
-                    print(
-                        f"{colors.label('Lyrics:')} "
-                        f"{colors.success(f'synced ({place})')}"
-                    )
-
-                else:
-                    print(
-                        f"{colors.label('Lyrics:')} "
-                        f"{colors.muted('plain only (no synced version)')}"
-                    )
-
-            elif not lyrics_error:
-                print(f"{colors.label('Lyrics:')} {colors.muted('not found')}")
+        lyrics = _lyrics_lines(metadata, ctx)
 
         try:
             add_metadata(
@@ -146,11 +140,17 @@ def _download_and_tag(
                 cover_path,
                 metadata,
                 lyrics,
-                lyrics_type,
+                ctx.lyrics_type,
             )
 
-        except (mutagen.MutagenError, CoverError, KeyError, ValueError, OSError) as error:
-            return False, f"metadata error: {error}", False
+        except (
+            mutagen.MutagenError,
+            CoverError,
+            KeyError,
+            ValueError,
+            OSError,
+        ) as error:
+            return Result(False, f"metadata error: {error}")
 
         try:
             shutil.move(
@@ -159,21 +159,17 @@ def _download_and_tag(
             )
 
             try:
-                write_lrc_sidecar(final_path, lyrics, lyrics_type)
+                write_lrc_sidecar(final_path, lyrics, ctx.lyrics_type)
 
             except OSError as error:
-                print(
-                    colors.warning(
-                        f"WARNING: could not write LRC file: {error}"
-                    )
-                )
+                _report.warning(f"WARNING: could not write LRC file: {error}")
 
         except OSError as error:
-            return False, f"move error: {error}", False
+            return Result(False, f"move error: {error}")
 
-    print(f"{colors.success('SUCCESS:')} {filename}")
+    _report.success(f"SUCCESS: {filename}")
 
-    return True, "downloaded", False
+    return Result(True, "downloaded")
 
 
 def _soundcloud_artwork(candidate):
@@ -205,45 +201,30 @@ def _soundcloud_artwork(candidate):
     return None
 
 
-def _soundcloud_fallback(
-    metadata,
-    output,
-    title_only,
-    audio_format,
-    audio_quality,
-    source_config,
-    runtime,
-    lyrics_type,
-    age_restricted=None,
-    fallback_names=None,
-    primary=False,
-):
+def _soundcloud_fallback(metadata, ctx: RunContext, age_restricted=None,
+                         fallback_names=None, primary=False):
     """Search SoundCloud and download at most once.
 
     Nothing is downloaded until a single candidate is either confident or
     explicitly chosen by the user. Returns ``(ok, reason)``.
     """
     if primary:
-        print(
-            colors.muted(
-                "Searching SoundCloud as the primary music source."
-            )
+        _report.muted(
+            "Searching SoundCloud as the primary music source."
         )
 
     elif age_restricted is True:
-        print(
-            colors.warning(
-                "AGE-RESTRICTED: YouTube requires sign-in for this video."
-            )
+        _report.warning(
+            "AGE-RESTRICTED: YouTube requires sign-in for this video."
         )
 
     else:
-        print(
-            colors.muted(
-                "YouTube had no usable result; looking for the track "
-                "on SoundCloud."
-            )
+        _report.muted(
+            "YouTube had no usable result; looking for the track "
+            "on SoundCloud."
         )
+
+    source_config = ctx.source_config
 
     result = soundcloud.find_soundcloud_fallback(
         metadata["artist"],
@@ -270,7 +251,7 @@ def _soundcloud_fallback(
     blocked = soundcloud.blocked_reason(candidate)
 
     if blocked:
-        print(colors.error(f"FAILED: SoundCloud track {blocked}"))
+        _report.fail_raw(f"FAILED: SoundCloud track {blocked}")
         return False, f"SoundCloud {blocked}"
 
     preview = soundcloud.preview_reason(
@@ -279,19 +260,19 @@ def _soundcloud_fallback(
     )
 
     if preview:
-        print(colors.error(f"FAILED: SoundCloud track is {preview}"))
+        _report.fail_raw(f"FAILED: SoundCloud track is {preview}")
         return False, f"SoundCloud {preview}"
 
     webpage_url = candidate.get("webpage_url")
 
     if not webpage_url:
-        print(f"{colors.error('FAILED:')} Invalid SoundCloud result")
+        _report.fail("Invalid SoundCloud result")
         return False, "invalid SoundCloud result"
 
-    print(
-        f"{colors.label('Selected:')} "
+    _report.label(
+        "Selected:",
         f"{candidate.get('title', 'Unknown')} "
-        f"{colors.muted('(SoundCloud)')}"
+        f"{colors.muted('(SoundCloud)')}",
     )
 
     # Keep the provider artwork; only add SoundCloud art when the metadata
@@ -305,7 +286,7 @@ def _soundcloud_fallback(
             tagged_metadata = dict(metadata)
             tagged_metadata["cover_url"] = artwork
 
-    ok, reason, _failed = _download_and_tag(
+    download = _download_and_tag(
         tagged_metadata,
         {
             "title": candidate.get("title"),
@@ -313,18 +294,12 @@ def _soundcloud_fallback(
             "thumbnail": candidate.get("thumbnail"),
         },
         webpage_url,
-        output,
-        title_only,
-        audio_format,
-        audio_quality,
-        source_config,
-        runtime,
-        lyrics_type,
+        ctx,
         # SoundCloud artwork replaces the YouTube thumbnail fallback.
         False,
     )
 
-    return ok, reason
+    return download.ok, download.reason
 
 
 def _fallback_allowed(reason, source_config, age_restricted=None, blocked=None):
@@ -369,20 +344,9 @@ def _fallback_allowed(reason, source_config, age_restricted=None, blocked=None):
     return trigger == "any"
 
 
-def _maybe_soundcloud_fallback(
-    reason,
-    metadata,
-    output,
-    title_only,
-    audio_format,
-    audio_quality,
-    source_config,
-    runtime,
-    lyrics_type,
-    age_restricted=None,
-    blocked=None,
-    fallback_names=None,
-):
+def _maybe_soundcloud_fallback(reason, metadata, ctx: RunContext,
+                               age_restricted=None, blocked=None,
+                               fallback_names=None):
     """Run the SoundCloud fallback when the trigger allows it.
 
     Returns the normal ``(ok, reason)`` pair, falling back to the original
@@ -390,7 +354,7 @@ def _maybe_soundcloud_fallback(
     """
     if not _fallback_allowed(
         reason,
-        source_config,
+        ctx.source_config,
         age_restricted,
         blocked,
     ):
@@ -398,31 +362,14 @@ def _maybe_soundcloud_fallback(
 
     return _soundcloud_fallback(
         metadata,
-        output,
-        title_only,
-        audio_format,
-        audio_quality,
-        source_config,
-        runtime,
-        lyrics_type,
+        ctx,
         age_restricted=age_restricted,
         fallback_names=fallback_names,
     )
 
 
-def _youtube_attempt(
-    metadata,
-    output,
-    title_only,
-    audio_format,
-    audio_quality,
-    source_config,
-    runtime,
-    lyrics_type,
-    youtube_enabled,
-    fallback_names=None,
-    allow_soundcloud_fallback=True,
-):
+def _youtube_attempt(metadata, ctx: RunContext, youtube_enabled,
+                     fallback_names=None, allow_soundcloud_fallback=True):
     """Search YouTube, download one result and optionally fall back.
 
     Returns the usual ``(ok, reason)`` pair. When SoundCloud is the primary
@@ -440,17 +387,17 @@ def _youtube_attempt(
         )
 
     except YoutubeSearchError as error:
-        print(f"{colors.error('FAILED:')} yt-dlp search failed: {error}")
+        _report.fail(f"yt-dlp search failed: {error}")
         return False, "yt-dlp search failed"
 
     if not video:
         if youtube.LAST_SEARCH_HAD_CANDIDATES:
             reason = "no confident YouTube match"
-            print(f"{colors.error('FAILED:')} No confident YouTube match")
+            _report.fail("No confident YouTube match")
 
         else:
             reason = "no YouTube result"
-            print(f"{colors.error('FAILED:')} No YouTube result")
+            _report.fail("No YouTube result")
 
         if not allow_soundcloud_fallback:
             return False, reason
@@ -458,13 +405,7 @@ def _youtube_attempt(
         return _maybe_soundcloud_fallback(
             reason,
             metadata,
-            output,
-            title_only,
-            audio_format,
-            audio_quality,
-            source_config,
-            runtime,
-            lyrics_type,
+            ctx,
             fallback_names=fallback_names,
         )
 
@@ -483,28 +424,17 @@ def _youtube_attempt(
             )
 
     if not video_url:
-        print(f"{colors.error('FAILED:')} Invalid YouTube result")
+        _report.fail("Invalid YouTube result")
         return False, "invalid YouTube result"
 
-    ok, reason, download_failed = _download_and_tag(
-        metadata,
-        video,
-        video_url,
-        output,
-        title_only,
-        audio_format,
-        audio_quality,
-        source_config,
-        runtime,
-        lyrics_type,
-        youtube_enabled,
-    )
+    download = _download_and_tag(metadata, video, video_url, ctx,
+                                 youtube_enabled)
 
-    if ok or not download_failed:
-        return ok, reason
+    if download.ok or not download.download_failed:
+        return download.ok, download.reason
 
     if not allow_soundcloud_fallback:
-        return False, reason
+        return False, download.reason
 
     # The download's own stderr is the most reliable signal: a bot check
     # often lets --dump-single-json through and only fails here. Fall back
@@ -517,15 +447,9 @@ def _youtube_attempt(
         age_restricted = probe_age_restriction(video_url)
 
     return _maybe_soundcloud_fallback(
-        reason,
+        download.reason,
         metadata,
-        output,
-        title_only,
-        audio_format,
-        audio_quality,
-        source_config,
-        runtime,
-        lyrics_type,
+        ctx,
         age_restricted=age_restricted,
         blocked=blocked,
         fallback_names=fallback_names,
@@ -557,38 +481,42 @@ def process_song(
     if lyrics_type is None:
         lyrics_type = source_config.lyrics_type
 
-    print(
-        f"{colors.label('Metadata:')} "
+    ctx = RunContext(
+        output=output,
+        title_only=title_only,
+        audio_format=audio_format,
+        audio_quality=audio_quality,
+        source_config=source_config,
+        runtime=runtime,
+        lyrics_type=lyrics_type,
+    )
+
+    _report.label(
+        "Metadata:",
         f"{metadata['artist']} - "
-        f"{metadata['title']}"
+        f"{metadata['title']}",
     )
 
     filename = make_filename(
         metadata,
-        title_only,
-        audio_format,
+        ctx.title_only,
+        ctx.audio_format,
     )
 
-    if (output / filename).exists():
-        print(f"{colors.skip('SKIP:')} already exists: {filename}")
+    if (ctx.output / filename).exists():
+        _report.skip(f"already exists: {filename}")
         return True, "exists"
 
     music_sources = list(source_config.music_sources)
 
     if not music_sources:
-        print(f"{colors.error('FAILED:')} No music sources enabled")
+        _report.fail("No music sources enabled")
         return False, "no music sources enabled"
 
     if music_sources[0] == MusicSource.SOUNDCLOUD.value:
         ok, reason = _soundcloud_fallback(
             metadata,
-            output,
-            title_only,
-            audio_format,
-            audio_quality,
-            source_config,
-            runtime,
-            lyrics_type,
+            ctx,
             fallback_names=(input_artist, input_title),
             primary=True,
         )
@@ -599,39 +527,25 @@ def process_song(
         if MusicSource.YOUTUBE.value not in music_sources:
             return ok, reason
 
-        print(
-            colors.muted(
-                "SoundCloud did not produce a track; trying YouTube."
-            )
+        _report.muted(
+            "SoundCloud did not produce a track; trying YouTube."
         )
 
         return _youtube_attempt(
             metadata,
-            output,
-            title_only,
-            audio_format,
-            audio_quality,
-            source_config,
-            runtime,
-            lyrics_type,
+            ctx,
             youtube_enabled,
             fallback_names=(input_artist, input_title),
             allow_soundcloud_fallback=False,
         )
 
     if not youtube_enabled:
-        print(f"{colors.error('FAILED:')} YouTube is disabled")
+        _report.fail("YouTube is disabled")
         return False, "YouTube disabled"
 
     return _youtube_attempt(
         metadata,
-        output,
-        title_only,
-        audio_format,
-        audio_quality,
-        source_config,
-        runtime,
-        lyrics_type,
+        ctx,
         youtube_enabled,
         fallback_names=(input_artist, input_title),
         allow_soundcloud_fallback=(

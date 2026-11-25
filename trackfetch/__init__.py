@@ -80,6 +80,7 @@ from .constants import (
     YOUTUBE_MUSIC_SEARCH_LIMIT,
     YTDLP_REMOTE_COMPONENTS,
 )
+from .context import RunContext
 from .enums import AudioFormat, MusicSource
 from .errors import (
     ConfigError,
@@ -108,6 +109,8 @@ from .matching import (
     select_best_metadata,
     similarity,
 )
+from .reporter import Reporter
+from .result import Result
 from .scoring import (
     DEFAULT_LYRICS_SCORING,
     DEFAULT_METADATA_SCORING,
@@ -324,6 +327,9 @@ __all__ = [
     "DEFAULT_SOUNDCLOUD_SCORING",
     "DEFAULT_YOUTUBE_SCORING",
     "ArtistThresholds",
+    "RunContext",
+    "Result",
+    "Reporter",
     "SourceConfig",
     "SoundcloudError",
     "THEMES_FILENAME",
